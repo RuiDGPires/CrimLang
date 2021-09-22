@@ -1,0 +1,8 @@
+[submodule "vm"]
+	path = vm
+	url = https://github.com/RuiDGPires/CrimVm.git
+	branch = core
+[submodule "CrimVm"]
+	path = CrimVm
+	url = https://github.com/RuiDGPires/CrimVm
+	branch = core
