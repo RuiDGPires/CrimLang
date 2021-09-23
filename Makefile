@@ -1,16 +1,17 @@
 TARGET=crimlang
-CC=gcc
+CC=g++
 
-C_FILES = $(wildcard src/*.cpp)
-H_FILES = $(wildcard src/*.hpp)
+VM_FILES = $(wildcard CrimVm/src/*.c)
+CPP_FILES = $(wildcard src/*.cpp)
+HPP_FILES = $(wildcard src/*.hpp)
 
 default: debug
 
-$(TARGET)_dbg: $(C_FILES) $(H_FILES)
-	@$(CC) -Wall -O0 -D DEBUG -g $^ -o $@
+$(TARGET)_dbg: $(CPP_FILES) $(VM_FILES) $(HPP_FILES)
+	@$(CC) -Wall -fpermissive -pthread -O0 -D DEBUG -g $^ -o $@
 
-$(TARGET): $(C_FILES) $(H_FILES)
-	@$(CC) -Wall -O3 $(CFLAGS) $^ -o $@
+$(TARGET): $(CPP_FILES) $(VM_FILES) $(HPP_FILES)
+	@$(CC) -Wall -fpermissive -pthread -O3 $(CFLAGS) $^ -o $@
 
 debug: $(TARGET)_dbg
 
