@@ -44,6 +44,7 @@ class Tracker{
 		void set_type(crl::Token::Type);
 		void push_char(char c);
 		bool parse_symbol(std::string);
+		void check_keyword();
 	public:
 		void take(char);
 		void dump();
@@ -122,6 +123,31 @@ bool Tracker::parse_symbol(std::string str){
 	return 1;
 }
 
+void Tracker::check_keyword(){
+	if (this->current_token.str.compare("if") == 0)
+		this->current_token.type = crl::Token::Type::IF;
+	else if (this->current_token.str.compare("else") == 0)
+		this->current_token.type = crl::Token::Type::IF;
+	else if (this->current_token.str.compare("for") == 0)
+		this->current_token.type = crl::Token::Type::FOR;
+	else if (this->current_token.str.compare("while") == 0)
+		this->current_token.type = crl::Token::Type::FOR;
+	else if (this->current_token.str.compare("mut") == 0)
+		this->current_token.type = crl::Token::Type::MUT;
+	else if (this->current_token.str.compare("char") == 0)
+		this->current_token.type = crl::Token::Type::CHAR;
+	else if (this->current_token.str.compare("i32") == 0)
+		this->current_token.type = crl::Token::Type::I32;
+	else if (this->current_token.str.compare("u32") == 0)
+		this->current_token.type = crl::Token::Type::U32;
+	else if (this->current_token.str.compare("float") == 0)
+		this->current_token.type = crl::Token::Type::FLOAT;
+	else if (this->current_token.str.compare("double") == 0)
+		this->current_token.type = crl::Token::Type::DOUBLE;
+	else if (this->current_token.str.compare("return") == 0)
+		this->current_token.type = crl::Token::Type::RETURN;
+}
+
 void Tracker::dump(){
 	this->result.push_back(current_token);
 	this->state = PState::NONE;
@@ -165,6 +191,7 @@ void Tracker::take(char c){
 			if (is_letter(c) || is_number(c) || c == '_')
 				this->push_char(c);
 			else {
+				this->check_keyword();
 				this->dump();
 				goto eval;
 			}
