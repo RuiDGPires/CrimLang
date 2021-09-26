@@ -2,18 +2,6 @@
 #include <iostream>
 #include <fstream>
 
-crl::Token::Token(){
-	this->type = crl::Token::Type::NONE;
-	this->str = "";
-	this->line = 0;
-	this->column = 0;
-}
-
-crl::Token::~Token(){}
-std::ostream& operator << ( std::ostream& outs, const crl::Token &token){
-	return outs << "[" << token.type << "]" << " (" << token.line << ", " << token.column << "): " << token.str;
-}
-
 static bool is_number(char c){
 	return c >= '0' && c <= '9';
 }
@@ -25,7 +13,7 @@ static bool is_letter(char c){
 static bool is_symbol(char c){
 	return c == '(' || c == ')' || c == '{' || c == '}' || c == ';' \
 						|| c == '=' || c == '+' || c == '-' || c == '*' || c == '/' || c == '$' \
-						|| c == '#' || c == '"' || c == '\'' || c == '<' || c == '>';
+						|| c == '#' || c == '"' || c == '\'' || c == '<' || c == '>' || c =='&' || c == '%' || c == '|';
 }
 
 static bool is_whitespace(char c){
