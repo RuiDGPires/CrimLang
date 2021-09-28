@@ -7,31 +7,31 @@
 namespace crl{
 	class Node{
 		private:
-			std::vector<Node*>  children;
+			std::vector<Node *>  children;
 		public:
 			enum Type{PROGRAM, INIT, BLOCK, STATEMENT, ASSIGN, FUNC, IF, ELSE, CALL, FUNCARGS,EXPRESSION, TERM, FACTOR, LEAF, TYPE, };
 
 			Type type;
-			crl::Token token;
 
 			Node *parent;
 
 			Node();
+			Node(Type, Node *);
 			virtual ~Node();
-			virtual void deleteNode();
-			virtual void addChild(Node *);
-			virtual Node *getChild(int);
+			virtual void add_child(Node *);
+			virtual Node *get_child(int);
 			virtual Node *operator[](int);
-			virtual std::string toString(int depth) const;
+			virtual std::string to_string(int depth) const;
 	};
-
-	class Ast{
-		private:
+	
+	class Leaf : public Node {
 		public:
-			Ast();
-			~Ast();
-			std::string toString(int) const;
+			Token token;
+			Leaf(Token);
+			~Leaf();
 	};
-}
 
+
+	typedef Node *Ast;
+}
 
