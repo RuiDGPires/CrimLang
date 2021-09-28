@@ -58,8 +58,6 @@ void Tracker::set_type(crl::Token::Type t){
 bool Tracker::parse_symbol(std::string str){
 	if (str.compare("*") == 0)
 		this->current_token.type = crl::Token::Type::TIMES;
-	else if (str.compare("**") == 0)
-		this->current_token.type = crl::Token::Type::POW;
 	else if (str.compare("+") == 0)
 		this->current_token.type = crl::Token::Type::PLUS;
 	else if (str.compare("-") == 0)
@@ -128,10 +126,10 @@ void Tracker::check_keyword(){
 		this->current_token.type = crl::Token::Type::I32;
 	else if (this->current_token.str.compare("u32") == 0)
 		this->current_token.type = crl::Token::Type::U32;
-	else if (this->current_token.str.compare("float") == 0)
-		this->current_token.type = crl::Token::Type::FLOAT;
-	else if (this->current_token.str.compare("double") == 0)
-		this->current_token.type = crl::Token::Type::DOUBLE;
+	else if (this->current_token.str.compare("f32") == 0)
+		this->current_token.type = crl::Token::Type::F32;
+	else if (this->current_token.str.compare("f64") == 0)
+		this->current_token.type = crl::Token::Type::F64;
 	else if (this->current_token.str.compare("return") == 0)
 		this->current_token.type = crl::Token::Type::RETURN;
 }

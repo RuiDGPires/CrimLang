@@ -4,5 +4,5 @@
 	branch = core
 [submodule "CrimVm"]
 	path = CrimVm
-	url = https://github.com/RuiDGPires/CrimVm
+	url = https://github.com/RuiDGPires/CrimVm.git
 	branch = core

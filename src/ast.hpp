@@ -9,7 +9,7 @@ namespace crl{
 		private:
 			std::vector<Node *>  children;
 		public:
-			enum Type{PROGRAM, INIT, BLOCK, STATEMENT, ASSIGN, FUNC, IF, ELSE, CALL, FUNCARGS,EXPRESSION, TERM, FACTOR, LEAF, TYPE, };
+			enum Type{PROGRAM, DECLARATION, INIT, BLOCK, STATEMENT, ASSIGN, FUNC, IF, ELSE, CALL, FUNCARGS,EXPRESSION, TERM, FACTOR, LEAF, TYPE, };
 
 			Type type;
 
@@ -32,6 +32,6 @@ namespace crl{
 	};
 
 
-	typedef Node *Ast;
+	typedef Node Ast;
 }
 
