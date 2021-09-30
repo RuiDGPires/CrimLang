@@ -39,6 +39,7 @@ class Tracker{
 	public:
 		void take(char);
 		void dump();
+		void dump_eof();
 
 		std::vector<crl::Token> get_result();
 		Tracker(){}
@@ -143,12 +144,17 @@ void Tracker::dump(){
 	current_token = crl::Token();
 }
 
+void Tracker::dump_eof(){
+	current_token.type = crl::Token::Type::EOF_;
+	current_token.str = '\0';
+	this->dump();
+}
+
 void Tracker::take(char c){
 	if (c == '\n'){
 		if (state == PState::COMMENT) state = PState::NONE;
 		this->line++;
 		this->column = 0;
-		return;
 	}
 
 	this->column++;
@@ -171,7 +177,7 @@ void Tracker::take(char c){
 				state = PState::SYMBOL;
 				this->set_pos();
 				this->push_char(c);
-			}
+			}	
 			break;
 	
 		case PState::IDENT:
@@ -232,8 +238,10 @@ std::vector<crl::Token> crl::tokenize(std::string filename){
 	while (file >> std::noskipws >> c){
 		tracker.take(c);
 	}
+	// TODO : Is this needed?
 	tracker.take(c);
 
+	tracker.dump_eof();
 	file.close();
 
 	return tracker.get_result();

@@ -12,7 +12,10 @@ static void print_token_vec(std::vector<crl::Token> vec){
 #define PROGRAM_ENTRY_
 int main(int argc, char *argv[]){
 	try{
-	std::cout << crl::generate_ast(crl::tokenize(argv[1])).to_string() << std::endl;
+		//print_token_vec(crl::tokenize(argv[1]));
+		crl::Ast *ast = crl::generate_ast(crl::tokenize(argv[1]));
+		std::cout << ast->to_string();
+		delete ast;
 	}catch(std::string &e){
 		std::cout << e << std::endl;
 	}

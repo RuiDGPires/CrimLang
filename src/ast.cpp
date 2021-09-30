@@ -2,7 +2,10 @@
 
 namespace crl{
 
-Node::Node(){}
+Node::Node(){
+	this->type = Node::Type::NONE;
+	this->parent = NULL;
+}
 
 Node::Node(Type type, Node *parent){
 	this->type = type;
@@ -34,17 +37,22 @@ std::string Node::to_string() const {
 }
 
 std::string Node::to_string(int depth) const{
-	std::string ret = std::string(depth, ' ') + std::string((int) this->type, ' ');
+	std::string ret = std::string(depth, ' ') + std::string(1, (int) this->type + '0');
+
 	for (Node *n: this->children)
 		ret += "\n" + n->to_string(depth + 2);
 	return ret;
 }
 
 Leaf::Leaf(Token t){
+	this->type = Node::Type::LEAF;
 	this->token = t;
 }
 
 Leaf::~Leaf(){}
-}
 
+std::string Leaf::to_string(int depth) const{
+	return std::string(depth, ' ') + this->token.to_string();
+}
+}
 

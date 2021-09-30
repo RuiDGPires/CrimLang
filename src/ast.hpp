@@ -9,7 +9,7 @@ namespace crl{
 		private:
 			std::vector<Node *>  children;
 		public:
-			enum Type{PROGRAM, DECLARATION, INIT, BLOCK, STATEMENT, ASSIGN, FUNC, IF, ELSE, CALL, FUNCARGS,EXPRESSION, TERM, FACTOR, LEAF, TYPE, };
+			enum Type{NONE, PROGRAM, DECLARATION, INIT, BLOCK, STATEMENT, ASSIGN, FUNC, IF, ELSE, CALL, FUNCARGS,EXPRESSION, TERM, FACTOR, LEAF, TYPE, };
 
 			Type type;
 
@@ -30,6 +30,7 @@ namespace crl{
 			Token token;
 			Leaf(Token);
 			~Leaf();
+			std::string to_string(int) const;
 	};
 
 

@@ -7,6 +7,6 @@
 
 namespace crl {
 	std::vector<Token> tokenize(std::string);
-	Ast generate_ast(std::vector<Token>);
+	Ast *generate_ast(std::vector<Token>);
 }
 

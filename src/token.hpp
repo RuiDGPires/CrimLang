@@ -9,8 +9,8 @@ namespace crl {
 		//Keywords
 		IF, ELSE, MUT, CHAR, I32, U32, F32, F64, RETURN, FOR, WHILE,
 		//Others
-		INT, DEC, TIMES, PLUS, MINUS, SLASH, COMMENTSYM, DOT, LPAREN, RPAREN, LBRACK, RBRACK, DOLLAR, CLN, SEMICLN, COMMA, BECOMES, PLEQ, MIEQ, TIEQ, SLEQ, EQL, GEQ, LEQ, GTR, LSS, NEQ
-		};
+		INT, DEC, TIMES, PLUS, MINUS, SLASH, COMMENTSYM, DOT, LPAREN, RPAREN, LBRACK, RBRACK, DOLLAR, CLN, SEMICLN, COMMA, BECOMES, PLEQ, MIEQ, TIEQ, SLEQ, EQL, GEQ, LEQ, GTR, LSS, NEQ,
+		EOF_};
 
 		std::string str;
 		Type type;
@@ -18,6 +18,8 @@ namespace crl {
 		u32 line, column;
 		Token();
 		~Token();
+
+		std::string to_string() const;
 	};
 }
 
