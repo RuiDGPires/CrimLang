@@ -29,6 +29,10 @@ Node *Node::operator[](int i){
 	return this->get_child(i);
 }
 
+std::string Node::to_string() const {
+	return this->to_string(0);
+}
+
 std::string Node::to_string(int depth) const{
 	std::string ret = std::string(depth, ' ') + std::string((int) this->type, ' ');
 	for (Node *n: this->children)

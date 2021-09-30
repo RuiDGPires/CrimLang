@@ -1,6 +1,7 @@
 #include "compiler.hpp"
 #include <iostream>
 #include <fstream>
+#include <string>
 
 static bool is_number(char c){
 	return c >= '0' && c <= '9';
@@ -33,11 +34,12 @@ class Tracker{
 		void push_char(char c);
 		bool parse_symbol(std::string);
 		void check_keyword();
+		std::vector<crl::Token> result;
 	public:
 		void take(char);
 		void dump();
-		std::vector<crl::Token> result;
 
+		std::vector<crl::Token> get_result();
 		Tracker(){}
 		~Tracker(){}
 };
@@ -218,6 +220,9 @@ void Tracker::take(char c){
 	}
 }
 
+std::vector<crl::Token> Tracker::get_result(){
+	return this->result;
+}
 
 std::vector<crl::Token> crl::tokenize(std::string filename){
 	std::ifstream file;
@@ -231,5 +236,6 @@ std::vector<crl::Token> crl::tokenize(std::string filename){
 	tracker.dump();
 
 	file.close();
-	return tracker.result;
+
+	return tracker.get_result();
 }

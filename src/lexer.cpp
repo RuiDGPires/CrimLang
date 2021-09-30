@@ -1,6 +1,6 @@
 #include "compiler.hpp"
 
-class Tracker{
+class _lx_Tracker{
 	private:
 	std::vector<crl::Token> token_list;
 	crl::Ast *ast, aux;
@@ -8,8 +8,8 @@ class Tracker{
 	bool eof = false;
 
 	public:
-		Tracker(){}
-		Tracker(std::vector<crl::Token> &tl){
+		_lx_Tracker(){}
+		_lx_Tracker(std::vector<crl::Token> &tl){
 			this->token_list = tl; 
 			this->ast = &aux;
 			this->current = tl[0];
@@ -24,9 +24,9 @@ class Tracker{
 		void expect(crl::Token::Type);
 		void expect(int, ...);
 
-		void ast_enter(crl::Node::Type);
-		void ast_add(crl::Token);
-		void ast_exit();
+		void enter(crl::Node::Type);
+		void add(crl::Token);
+		void leave();
 		crl::Ast result();
 
 
@@ -37,22 +37,22 @@ class Tracker{
 };
 
 
-void Tracker::next(){
+void _lx_Tracker::next(){
 	// TODO
 	if (this->eof) throw "End of file reached";
 	this->current = this->token_list[++this->pointer];
 	if (this->pointer == this->token_list.size() - 1) this->eof = true;
 }
 
-crl::Token &Tracker::peek(){
+crl::Token &_lx_Tracker::peek(){
 	return this->token_list[this->pointer + 1];
 }
 
-crl::Token &Tracker::previous(){
+crl::Token &_lx_Tracker::previous(){
 	return this->token_list[this->pointer - 1];
 }
 
-bool Tracker::accept(crl::Token::Type t){
+bool _lx_Tracker::accept(crl::Token::Type t){
 	bool res = t == this->current.type;
 	if (res)
 		this->next();
@@ -60,7 +60,7 @@ bool Tracker::accept(crl::Token::Type t){
 }
 
 #include <stdarg.h>
-bool Tracker::accept(int n, ...){
+bool _lx_Tracker::accept(int n, ...){
 	va_list args;
 	va_start(args, n);
 	bool res = false;
@@ -77,13 +77,13 @@ bool Tracker::accept(int n, ...){
 	return res;
 }
 
-void Tracker::expect(crl::Token::Type t){
+void _lx_Tracker::expect(crl::Token::Type t){
 	// TODO : Improve error system
-	if (t != this->current.type) throw "Unexpected token";
+	if (t != this->current.type) throw "Unexpected token: " + this->current.str;
 	this->next();
 }
 
-void Tracker::expect(int n, ...){
+void _lx_Tracker::expect(int n, ...){
 	va_list args;
 	va_start(args, n);
 	bool res = false;
@@ -95,59 +95,64 @@ void Tracker::expect(int n, ...){
 		}
 	}
 	va_end(args);
-	if (!res) throw "Unexpected Token";
+	if (!res) throw "Unexpected token: " + this->current.str;
 	this->next();
 }
 
-void Tracker::ast_enter(crl::Node::Type t){
+void _lx_Tracker::enter(crl::Node::Type t){
 	crl::Node * node = new crl::Node(t, this->ast);
 	this->ast->add_child(node);
 	this->ast = node;
 }
 
-void Tracker::ast_exit(){
+void _lx_Tracker::leave(){
 	this->ast = this->ast->parent;
 }
 
-void Tracker::ast_add(crl::Token t){
+void _lx_Tracker::add(crl::Token t){
 	this->ast->add_child(new crl::Leaf(t));
 }
 
-crl::Ast Tracker::result(){
+crl::Ast _lx_Tracker::result(){
 	return this->aux;
 }
 
 #define TYPE_SPEC() (5, crl::Token::Type::CHAR, crl::Token::Type::I32, crl::Token::Type::CHAR, crl::Token::Type::F32, crl::Token::Type::F64)
-#define ACC_AND_ADD(type) (accept(type)) this->ast_add(this->previous())
-#define EXP_AND_ADD(type) (expect(type)); this->ast_add(this->previous())
-#define ACC_AND_ADD_VAR(types) (accept types this->ast_add(this->previous())
-#define EXP_AND_ADD_VAR(types) expect types; this->ast_add(this->previous())
+#define TYPE_NUMERIC() (2, crl::Token::Type::INT, crl::Token::Type::DEC)
+#define ACC_AND_ADD(type) (accept(type)) this->add(this->previous())
+#define EXP_AND_ADD(type) (expect(type)); this->add(this->previous())
+#define ACC_AND_ADD_VAR(types) (accept types this->add(this->previous())
+#define EXP_AND_ADD_VAR(types) expect types; this->add(this->previous())
 
-void Tracker::program(){
-	this->ast_enter(crl::Node::Type::PROGRAM);
-	if (accept TYPE_SPEC()) 
-		this->declaration();
+void _lx_Tracker::program(){
+	this->enter(crl::Node::Type::PROGRAM);
+	while(!this->eof){
+		if (accept TYPE_SPEC()) 
+			this->declaration();
+	}
 	
-	this->ast_exit();
+	this->leave();
 }
 
-void Tracker::block(crl::Token::Type t){
+void _lx_Tracker::block(crl::Token::Type t){
 	while(!accept(t))
 		statement();		
 }
 
-void Tracker::statement(){
-	
+void _lx_Tracker::statement(){
+	EXP_AND_ADD_VAR(TYPE_NUMERIC());
 }
 
-void Tracker::declaration(){
-	this->ast_enter(crl::Node::Type::DECLARATION);
-	this->ast_add(this->previous());
+void _lx_Tracker::declaration(){
+	this->enter(crl::Node::Type::DECLARATION);
+	this->add(this->previous()); // TYPE SPEC
 	// Pointer?
 	while ACC_AND_ADD(crl::Token::Type::TIMES);
 	
 	// Function declaration
 	if (accept(crl::Token::Type::LPAREN)){
+		this->enter(crl::Node::Type::FUNC);
+		this->enter(crl::Node::Type::FUNCARGS);
 		if (accept TYPE_SPEC()){
 			while ACC_AND_ADD(crl::Token::Type::TIMES);
 
@@ -160,27 +165,34 @@ void Tracker::declaration(){
 				EXP_AND_ADD(crl::Token::Type::IDENT);
 			}
 		}
+		this->leave();
 		expect(crl::Token::Type::RPAREN);
 		expect(crl::Token::Type::LBRACK);
 
 		this->block(crl::Token::Type::RBRACK);
-
+		this->leave();
 	}else{
 		bool _mutable = accept(crl::Token::Type::MUT);
 		if (_mutable){
-			this->ast_add(this->previous());
+			this->add(this->previous());
+			EXP_AND_ADD(crl::Token::Type::IDENT);
 			EXP_AND_ADD(crl::Token::Type::BECOMES);
 			this->statement();
+		}else{
+			EXP_AND_ADD(crl::Token::Type::IDENT);
+			if (accept(crl::Token::Type::BECOMES)){
+				this->add(this->previous());
+				this->statement();
+			}
 		}
-		EXP_AND_ADD(crl::Token::Type::IDENT);
 		
 		expect(crl::Token::Type::SEMICLN);
 	}
-	this->ast_exit();
+	this->leave();
 }
 
 crl::Ast crl::generate_ast(std::vector<Token> t){
-	Tracker tracker(t);
+	_lx_Tracker tracker(t);
 	tracker.program();
 
 	return tracker.result(); 

@@ -21,6 +21,7 @@ namespace crl{
 			virtual void add_child(Node *);
 			virtual Node *get_child(int);
 			virtual Node *operator[](int);
+			virtual std::string to_string() const;
 			virtual std::string to_string(int depth) const;
 	};
 	
