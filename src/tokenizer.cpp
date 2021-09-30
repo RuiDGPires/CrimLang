@@ -170,8 +170,6 @@ void Tracker::take(char c){
 				state = PState::SYMBOL;
 				this->set_pos();
 				this->push_char(c);
-			}else if (is_whitespace(c)){
-				break;
 			}
 			break;
 	
@@ -233,7 +231,7 @@ std::vector<crl::Token> crl::tokenize(std::string filename){
 	while (file >> std::noskipws >> c){
 		tracker.take(c);
 	}
-	tracker.dump();
+	tracker.take(c);
 
 	file.close();
 
