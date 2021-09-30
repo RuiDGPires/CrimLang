@@ -17,7 +17,8 @@ static bool is_symbol(char c){
 						|| c == '#' || c == '"' || c == '\'' || c == '<' || c == '>' || c =='&' || c == '%' || c == '|';
 }
 
-static bool is_whitespace(char c){
+
+static __attribute((unused)) bool is_whitespace(char c){
 	return c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
