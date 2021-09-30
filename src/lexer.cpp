@@ -152,7 +152,8 @@ void _lx_Tracker::declaration(){
 	while ACC_AND_ADD(crl::Token::Type::TIMES);
 
 	bool _mutable = accept(crl::Token::Type::MUT);
-	this->add(this->previous());
+	if (_mutable)
+		this->add(this->previous());
 	EXP_AND_ADD(crl::Token::Type::IDENT);	
 	// Function declaration
 	if (accept(crl::Token::Type::LPAREN)){
