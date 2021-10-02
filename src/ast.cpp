@@ -37,7 +37,7 @@ std::string Node::to_string() const {
 }
 
 std::string Node::to_string(int depth) const{
-	std::string ret = std::string(depth, ' ') + std::string(1, (int) this->type + '0');
+	std::string ret = std::string(depth, ' ') + std::to_string((int) this->type);
 
 	for (Node *n: this->children)
 		ret += "\n" + n->to_string(depth + 2);

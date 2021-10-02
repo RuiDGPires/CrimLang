@@ -129,6 +129,7 @@ crl::Ast *_lx_Tracker::result(){
 #define EXP_AND_ADD_VAR(types) expect types; this->add(this->previous())
 
 void _lx_Tracker::factor(){
+	this->enter(crl::Node::Type::FACTOR);
 	if ACC_AND_ADD(crl::Token::Type::IDENT);
 	else if ACC_AND_ADD_VAR(TYPE_NUMERIC());
 	else if (accept(crl::Token::Type::LPAREN)){
@@ -137,23 +138,30 @@ void _lx_Tracker::factor(){
 	}else{
 		throw std::string("Syntax Error");
 	}
+	this->leave();
 }
 
 
 
 void _lx_Tracker::term(){
+	this->enter(crl::Node::Type::TERM);
 	this->factor();
-	while(accept(2, crl::Token::Type::TIMES, crl::Token::Type::SLASH)){
+	while(this->accept(2, crl::Token::Type::TIMES, crl::Token::Type::SLASH)){
 		this->add(this->previous());
 		this->factor();
 	}
+	this->leave();
 }
 
 void _lx_Tracker::expression(){
-	if ACC_AND_ADD_VAR((2, crl::Token::Type::TIMES, crl::Token::Type::SLASH));
+	this->enter(crl::Node::Type::EXPRESSION);
+	if ACC_AND_ADD_VAR((2, crl::Token::Type::PLUS, crl::Token::Type::MINUS));
 	this->term();
-	while(accept(2, crl::Token::Type::TIMES, crl::Token::Type::SLASH))
-		this->factor();
+	while(accept(2, crl::Token::Type::PLUS, crl::Token::Type::MINUS)){
+		this->add(this->previous());
+		this->term();
+	}
+	this->leave();
 }
 
 void _lx_Tracker::program(){
@@ -210,11 +218,11 @@ void _lx_Tracker::declaration(){
 	}else{
 		if (!_mutable){
 			EXP_AND_ADD(crl::Token::Type::BECOMES);
-			this->statement();
+			this->expression();
 		}else{
 			if (accept(crl::Token::Type::BECOMES)){
 				this->add(this->previous());
-				this->statement();
+				this->expression();
 			}
 		}
 		
