@@ -38,6 +38,7 @@ class _lx_Tracker{
 		void declaration();
 		void statement();
 		void block(crl::Token::Type);
+		void func_call();
 };
 
 
@@ -83,7 +84,7 @@ bool _lx_Tracker::accept(int n, ...){
 
 void _lx_Tracker::expect(crl::Token::Type t){
 	// TODO : Improve error system
-	if (t != this->current.type) throw "Unexpected token: " + this->current.str;
+	if (t != this->current.type) throw std::string("Unexpected token: " + this->current.str);
 	this->next();
 }
 
@@ -129,9 +130,31 @@ crl::Ast *_lx_Tracker::result(){
 #define ACC_AND_ADD_VAR(types) (accept types) this->add(this->previous())
 #define EXP_AND_ADD_VAR(types) expect types; this->add(this->previous())
 
+
+void _lx_Tracker::func_call(){
+	this->enter(crl::Node::Type::CALL);
+	this->add(this->previous());
+	this->expect(crl::Token::Type::LPAREN);
+	this->enter(crl::Node::Type::FUNCARGS);	
+	if (this->current.type != crl::Token::Type::RPAREN){
+		do{
+			this->expression();
+		}while(this->accept(crl::Token::Type::COMMA));
+		expect(crl::Token::Type::RPAREN);
+	}else{
+		this->next();
+	}
+	this->leave();
+	this->leave();
+}
 void _lx_Tracker::factor(){
 	this->enter(crl::Node::Type::FACTOR);
-	if ACC_AND_ADD(crl::Token::Type::IDENT);
+	if (accept(crl::Token::Type::IDENT)){
+		if (this->current.type == crl::Token::Type::LPAREN){
+			this->func_call();
+		}else
+			this->add(this->previous());
+	} 
 	else if ACC_AND_ADD_VAR(TYPE_NUMERIC());
 	else if (accept(crl::Token::Type::LPAREN)){
 		this->expression();
@@ -183,7 +206,99 @@ void _lx_Tracker::block(crl::Token::Type t){
 }
 
 void _lx_Tracker::statement(){
-	EXP_AND_ADD_VAR(TYPE_NUMERIC());
+	this->enter(crl::Node::Type::STATEMENT);
+
+	if (accept(crl::Token::Type::IF)){
+		this->enter(crl::Node::Type::IF);
+		this->expect(crl::Token::Type::LPAREN);
+		this->expression();	
+		this->expect(crl::Token::Type::RPAREN);
+
+		if (accept(crl::Token::Type::LBRACK))
+			this->block(crl::Token::Type::RBRACK);
+		else{
+			this->statement();
+		}
+		this->leave();
+	}else if (accept(crl::Token::Type::ELSE)){
+		this->enter(crl::Node::Type::ELSE);
+		if (accept(crl::Token::Type::LBRACK))
+			this->block(crl::Token::Type::RBRACK);
+		else{
+			this->statement();
+		}
+		this->leave();
+	}else if (accept(crl::Token::Type::WHILE)){
+		this->enter(crl::Node::Type::WHILE);
+		this->expect(crl::Token::Type::LPAREN);
+		this->expression();	
+		this->expect(crl::Token::Type::RPAREN);
+
+		if (accept(crl::Token::Type::LBRACK))
+			this->block(crl::Token::Type::RBRACK);
+		else
+			this->statement();
+		this->leave();
+	}else if (accept(crl::Token::Type::FOR)){
+		this->enter(crl::Node::Type::FOR);
+		this->expect(crl::Token::Type::LPAREN);
+		this->statement();	
+		if (this->previous().type != crl::Token::Type::SEMICLN)
+			this->expect(crl::Token::Type::SEMICLN);
+
+		this->expression();
+		this->expect(crl::Token::Type::SEMICLN);
+		this->expression();
+		this->expect(crl::Token::Type::RPAREN);
+
+		if (accept(crl::Token::Type::LBRACK))
+			this->block(crl::Token::Type::RBRACK);
+		else
+			this->statement();
+		this->leave();
+		this->leave();
+	}else if (accept(crl::Token::Type::RETURN)){
+		this->enter(crl::Node::Type::RETURN);
+		this->expression();
+		this->expect(crl::Token::Type::SEMICLN);
+		this->leave();
+	}else if (accept(crl::Token::Type::IDENT)){
+		if (this->current.type == crl::Token::Type::LPAREN){
+				this->func_call();
+		}else{
+			this->enter(crl::Node::Type::ASSIGN);
+			this->add(this->previous());
+			this->expect(crl::Token::Type::BECOMES);
+			this->expression();
+			this->expect(crl::Token::Type::SEMICLN);
+			this->leave();
+		}
+	}else if (accept TYPE_SPEC()){
+		this->enter(crl::Node::Type::INIT);
+		this->add(this->previous());
+		// VAR INIT
+		while ACC_AND_ADD(crl::Token::Type::TIMES);
+
+		bool _mutable = accept(crl::Token::Type::MUT);
+		if (_mutable)
+			this->add(this->previous());
+
+		if (!_mutable){
+			EXP_AND_ADD(crl::Token::Type::BECOMES);
+			this->expression();
+		}else{
+			if (accept(crl::Token::Type::BECOMES)){
+				this->add(this->previous());
+				this->expression();
+			}
+		}
+		
+		expect(crl::Token::Type::SEMICLN);
+		this->leave();
+	}else
+		throw std::string("Unexpected token: " + this->current.str);
+	
+	this->leave();
 }
 
 void _lx_Tracker::declaration(){
@@ -224,8 +339,9 @@ void _lx_Tracker::declaration(){
 			this->expression();
 		}else{
 			if (accept(crl::Token::Type::BECOMES)){
-				this->add(this->previous());
+				this->enter(crl::Node::Type::ASSIGN);
 				this->expression();
+				this->leave();
 			}
 		}
 		
