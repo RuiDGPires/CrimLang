@@ -97,6 +97,7 @@ void _lx_Tracker::expect(int n, ...){
 			res = true;
 			break;
 		}
+		n--;
 	}
 	va_end(args);
 	if (!res) throw "Unexpected token: " + this->current.str;
@@ -175,8 +176,10 @@ void _lx_Tracker::program(){
 }
 
 void _lx_Tracker::block(crl::Token::Type t){
+	this->enter(crl::Node::Type::BLOCK);
 	while(!accept(t))
 		statement();		
+	this->leave();
 }
 
 void _lx_Tracker::statement(){
