@@ -31,6 +31,9 @@ class _lx_Tracker{
 		crl::Ast *result();
 
 
+		void factor();
+		void term();
+		void expression();
 		void program();
 		void declaration();
 		void statement();
@@ -118,12 +121,40 @@ crl::Ast *_lx_Tracker::result(){
 	return this->aux;
 }
 
-#define TYPE_SPEC() (5, crl::Token::Type::CHAR, crl::Token::Type::I32, crl::Token::Type::CHAR, crl::Token::Type::F32, crl::Token::Type::F64)
+#define TYPE_SPEC() (7, crl::Token::Type::VOID, crl::Token::Type::CHAR, crl::Token::Type::U32, crl::Token::Type::I32, crl::Token::Type::CHAR, crl::Token::Type::F32, crl::Token::Type::F64)
 #define TYPE_NUMERIC() (2, crl::Token::Type::INT, crl::Token::Type::DEC)
 #define ACC_AND_ADD(type) (accept(type)) this->add(this->previous())
 #define EXP_AND_ADD(type) (expect(type)); this->add(this->previous())
-#define ACC_AND_ADD_VAR(types) (accept types this->add(this->previous())
+#define ACC_AND_ADD_VAR(types) (accept types) this->add(this->previous())
 #define EXP_AND_ADD_VAR(types) expect types; this->add(this->previous())
+
+void _lx_Tracker::factor(){
+	if ACC_AND_ADD(crl::Token::Type::IDENT);
+	else if ACC_AND_ADD_VAR(TYPE_NUMERIC());
+	else if (accept(crl::Token::Type::LPAREN)){
+		this->expression();
+		this->expect(crl::Token::Type::RPAREN);
+	}else{
+		throw std::string("Syntax Error");
+	}
+}
+
+
+
+void _lx_Tracker::term(){
+	this->factor();
+	while(accept(2, crl::Token::Type::TIMES, crl::Token::Type::SLASH)){
+		this->add(this->previous());
+		this->factor();
+	}
+}
+
+void _lx_Tracker::expression(){
+	if ACC_AND_ADD_VAR((2, crl::Token::Type::TIMES, crl::Token::Type::SLASH));
+	this->term();
+	while(accept(2, crl::Token::Type::TIMES, crl::Token::Type::SLASH))
+		this->factor();
+}
 
 void _lx_Tracker::program(){
 	this->enter(crl::Node::Type::PROGRAM);
@@ -138,7 +169,6 @@ void _lx_Tracker::program(){
 void _lx_Tracker::block(crl::Token::Type t){
 	while(!accept(t))
 		statement();		
-	
 }
 
 void _lx_Tracker::statement(){

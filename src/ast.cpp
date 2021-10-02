@@ -55,4 +55,3 @@ std::string Leaf::to_string(int depth) const{
 	return std::string(depth, ' ') + this->token.to_string();
 }
 }
-
