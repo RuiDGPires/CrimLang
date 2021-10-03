@@ -8,12 +8,14 @@ namespace crl{
 	class Node{
 		private:
 		public:
-			enum Type{NONE, PROGRAM, DECLARATION, INIT, BLOCK, STATEMENT, ASSIGN, FUNC, IF, ELSE, FOR, WHILE, CALL, FUNCARGS,EXPRESSION, TERM, FACTOR, LEAF, CAS, RETURN};
+			enum Type{NONE, PROGRAM, VAR_DECLARATION, FUNC_DECLARATION, INIT, BLOCK, STATEMENT, ASSIGN, IF, ELSE, FOR, WHILE, CALL, EXPRESSION, TERM, FACTOR, LEAF, CAS, ARG, RETURN};
 
 			Type type;
 
 			std::vector<Node *>  children;
 			Node *parent;
+			
+			std::string decorator;
 
 			Node();
 			Node(Type, Node *);
