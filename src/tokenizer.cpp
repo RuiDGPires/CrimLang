@@ -1,7 +1,6 @@
 #include "compiler.hpp"
 #include <iostream>
 #include <fstream>
-#include <string>
 
 static bool is_number(char c){
 	return c >= '0' && c <= '9';
