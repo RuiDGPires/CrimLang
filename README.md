@@ -1,7 +1,7 @@
 # CrimLang
 
 CrimLang will be a language that compiles into CrimVm bytecode.
-Tokenization seems to be working, it's missing the rest...
+Syntax will be very similar to the C language, with some changes.
 
 ---
 
