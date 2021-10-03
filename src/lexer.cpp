@@ -283,6 +283,8 @@ void _lx_Tracker::statement(){
 		if (_mutable)
 			this->add(this->previous());
 
+		EXP_AND_ADD(crl::Token::Type::IDENT);
+
 		if (!_mutable){
 			EXP_AND_ADD(crl::Token::Type::BECOMES);
 			this->expression();
