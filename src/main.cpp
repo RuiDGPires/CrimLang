@@ -1,7 +1,7 @@
 #include "compiler.hpp"
 #include <iostream>
 
-static void print_token_vec(std::vector<crl::Token> vec){
+static __attribute((unused)) void print_token_vec(std::vector<crl::Token> vec){
 	size_t size = vec.size();
 
 	for (size_t i = 0; i < size; i++){
@@ -14,7 +14,8 @@ int main(int argc, char *argv[]){
 	try{
 		//print_token_vec(crl::tokenize(argv[1]));
 		crl::Ast *ast = crl::generate_ast(crl::tokenize(argv[1]));
-		std::cout << ast->to_string();
+		//std::cout << ast->to_string();
+		generate_cas(ast, "b.cas");
 		delete ast;
 	}catch(std::string &e){
 		std::cout << e << std::endl;

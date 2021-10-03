@@ -7,12 +7,12 @@
 namespace crl{
 	class Node{
 		private:
-			std::vector<Node *>  children;
 		public:
-			enum Type{NONE, PROGRAM, DECLARATION, INIT, BLOCK, STATEMENT, ASSIGN, FUNC, IF, ELSE, FOR, WHILE, CALL, FUNCARGS,EXPRESSION, TERM, FACTOR, LEAF, TYPE, RETURN};
+			enum Type{NONE, PROGRAM, DECLARATION, INIT, BLOCK, STATEMENT, ASSIGN, FUNC, IF, ELSE, FOR, WHILE, CALL, FUNCARGS,EXPRESSION, TERM, FACTOR, LEAF, CAS, RETURN};
 
 			Type type;
 
+			std::vector<Node *>  children;
 			Node *parent;
 
 			Node();

@@ -7,13 +7,13 @@ static bool is_number(char c){
 }
 	
 static bool is_letter(char c){
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_');
 }
 
 static bool is_symbol(char c){
 	return c == '(' || c == ')' || c == '{' || c == '}' || c == ',' || c == ';' \
 						|| c == '=' || c == '+' || c == '-' || c == '*' || c == '/' || c == '$' \
-						|| c == '#' || c == '"' || c == '\'' || c == '<' || c == '>' || c =='&' || c == '%' || c == '|';
+						|| c == '#' || c == '<' || c == '>' || c =='&' || c == '%' || c == '|';
 }
 
 
@@ -24,10 +24,11 @@ static __attribute((unused)) bool is_whitespace(char c){
 
 class Tracker{
 	private:
-		enum PState{NONE, IDENT, NUM, QUOTE, SYMBOL, COMMENT};
+		enum PState{NONE, IDENT, NUM, STRING, CHAR, SYMBOL, COMMENT};
 		crl::Token current_token;
 		u32 line = 1, column = 0;
 		PState state = NONE;
+		bool str_spec = false; // AUX VARIABLE FOR STRING PARSING
 
 		void set_pos();
 		void set_type(crl::Token::Type);
@@ -124,7 +125,7 @@ void Tracker::check_keyword(){
 	else if (this->current_token.str.compare("mut") == 0)
 		this->current_token.type = crl::Token::Type::MUT;
 	else if (this->current_token.str.compare("char") == 0)
-		this->current_token.type = crl::Token::Type::CHAR;
+		this->current_token.type = crl::Token::Type::TCHAR;
 	else if (this->current_token.str.compare("i32") == 0)
 		this->current_token.type = crl::Token::Type::I32;
 	else if (this->current_token.str.compare("u32") == 0)
@@ -133,6 +134,8 @@ void Tracker::check_keyword(){
 		this->current_token.type = crl::Token::Type::F32;
 	else if (this->current_token.str.compare("f64") == 0)
 		this->current_token.type = crl::Token::Type::F64;
+	else if (this->current_token.str.compare("cas") == 0)
+		this->current_token.type = crl::Token::Type::CAS;
 	else if (this->current_token.str.compare("return") == 0)
 		this->current_token.type = crl::Token::Type::RETURN;
 }
@@ -150,6 +153,7 @@ void Tracker::dump_eof(){
 }
 
 void Tracker::take(char c){
+
 	if (c == '\n'){
 		if (state == PState::COMMENT) state = PState::NONE;
 		this->line++;
@@ -176,6 +180,14 @@ void Tracker::take(char c){
 				state = PState::SYMBOL;
 				this->set_pos();
 				this->push_char(c);
+			}else if (c == '"'){
+				state = PState::STRING;
+				set_type(crl::Token::Type::STRING);
+				this->set_pos();
+			}else if (c == '\''){
+				state = PState::CHAR;
+				set_type(crl::Token::Type::CHAR);
+				this->set_pos();
 			}	
 			break;
 	
@@ -196,7 +208,7 @@ void Tracker::take(char c){
 				if (this->current_token.type == crl::Token::Type::INT){
 					this->current_token.type = crl::Token::Type::DEC; 
 					this->push_char(c);	
-				}else throw "Invalid numberic format"; // TODO : Change error handling later...
+				}else throw std::string("Invalid numberic format"); // TODO : Change error handling later...
 			} else {
 				this->dump();	
 				goto eval;
@@ -211,13 +223,50 @@ void Tracker::take(char c){
 					if (this->parse_symbol(this->current_token.str)){
 						this->dump();
 						goto eval;
-					}else throw "Invalid syntax"; // TODO : Change error handling
+					}else throw std::string("Invalid syntax"); // TODO : Change error handling
 				}
 			}else if (this->parse_symbol(this->current_token.str)){
 				this->dump();
 				goto eval;
-			}else throw "Invalid syntax"; // TODO : Change error handling
+			}else throw std::string("Invalid syntax"); // TODO : Change error handling
 			
+			break;
+
+		case PState::STRING:
+			if (c == '\\'){
+				this->push_char(c);
+				this->str_spec = !this->str_spec;	 // SWITCH STR SPECIAL
+			}else if (c == '"'){
+				if (!this->str_spec){
+					this->dump();
+					break;	
+				}else{
+					this->current_token.str.pop_back();
+					this->push_char(c);
+					this->str_spec = false;
+				}
+			}else {
+				this->push_char(c);
+				this->str_spec = false;
+			}
+			break;
+		case PState::CHAR:
+			{
+			size_t size = this->current_token.str.size();
+			if (size == 0){
+				if (c == '\'') throw std::string("Invalid syntax: Empty char"); // TODO
+				this->push_char(c);
+			}else if (size == 1) {
+				if (this->current_token.str[0] == '\\'){
+					if (c == '\'') this->current_token.str.pop_back();
+					this->push_char(c);
+				}else{
+					if (c != '\'') throw std::string("Invalid syntax: invalid char"); // TODO
+					this->dump();
+				}
+			}else if (c != '\'') throw std::string("Invalid syntax: invalid char"); // TODO 
+			else this->dump();
+			}
 			break;
 		default:
 			break;
