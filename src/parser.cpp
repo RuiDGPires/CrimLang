@@ -138,7 +138,10 @@ void _ps_Tracker::func_call(){
 	if (this->current.type != crl::Token::Type::RPAREN){
 		do{
 			this->enter(crl::Node::Type::ARG);
-			this->expression();
+			if (this->accept(crl::Token::Type::AND))
+				this->expect(crl::Token::IDENT);
+			else
+				this->expression();
 			this->leave();
 		}while(this->accept(crl::Token::Type::COMMA));
 		expect(crl::Token::Type::RPAREN);
@@ -223,9 +226,9 @@ void _ps_Tracker::statement(){
 		this->enter(crl::Node::Type::ELSE);
 		if (accept(crl::Token::Type::LBRACK))
 			this->block(crl::Token::Type::RBRACK);
-		else{
+		else
 			this->statement();
-		}
+		
 		this->leave();
 	}else if (accept(crl::Token::Type::WHILE)){
 		this->enter(crl::Node::Type::WHILE);
@@ -279,7 +282,6 @@ void _ps_Tracker::statement(){
 		this->enter(crl::Node::Type::INIT);
 		this->add(this->previous());
 		// VAR INIT
-		while ACC_AND_ADD(crl::Token::Type::TIMES);
 
 		bool _mutable = accept(crl::Token::Type::MUT);
 		if (_mutable)
@@ -315,92 +317,90 @@ void _ps_Tracker::statement(){
 }
 
 void _ps_Tracker::declaration(){
-	if (accept(crl::Token::Type::CAS)){
-		this->enter(crl::Node::Type::CAS);
-		EXP_AND_ADD(crl::Token::Type::IDENT);
-		this->expect(crl::Token::Type::LPAREN);
-		EXP_AND_ADD(crl::Token::Type::INT);
-		this->expect(crl::Token::Type::RPAREN);
-		this->expect(crl::Token::Type::LBRACK);
-		while(accept(crl::Token::Type::STRING)){
-			this->add(this->previous());
-			this->expect(crl::Token::Type::SEMICLN);
-		}
-		this->expect(crl::Token::Type::RBRACK);
-	}else{	
-		// aux will be used to stor tokens until it's know if this is a declaration of a function or a variable
-		std::vector<crl::Token> aux;
+	// aux will be used to stor tokens until it's know if this is a declaration of a function or a variable
+	std::vector<crl::Token> aux;
+	bool is_cas = false;
+	if (accept(crl::Token::Type::CAS)) 
+		is_cas=true;
+	else	
 		expect TYPE_SPEC();
+
+	aux.push_back(this->previous());
+
+	bool _mutable = accept(crl::Token::Type::MUT);
+	if (_mutable)
 		aux.push_back(this->previous());
-		// Pointer?
-		while (accept(crl::Token::Type::TIMES))
-			aux.push_back(this->previous());
+	
+	expect(crl::Token::Type::IDENT);
+	aux.push_back(this->previous());
 
-
-		bool _mutable = accept(crl::Token::Type::MUT);
-		if (_mutable)
-			aux.push_back(this->previous());
-		
-		expect(crl::Token::Type::IDENT);
-		aux.push_back(this->previous());
-
-		size_t size = aux.size();
-		if (_mutable)
-			goto var_;
-		// Function declaration
-		if (accept(crl::Token::Type::LPAREN)){
+	size_t size = aux.size();
+	if (_mutable)
+		goto var_;
+	// Function declaration
+	if (accept(crl::Token::Type::LPAREN)){
+		if (!is_cas)
 			this->enter(crl::Node::Type::FUNC_DECLARATION);
+		else
+			this->enter(crl::Node::Type::CAS);
 
-			// Dump stored tokens
-			for (size_t i = 0; i < size; i++)
-				this->add(aux[i]);
+		// Dump stored tokens
+		for (size_t i = 0; i < size; i++)
+			this->add(aux[i]);
 
-			if (accept TYPE_SPEC()){
+		if (accept TYPE_SPEC()){
+			this->enter(crl::Node::Type::ARG);
+			this->add(this->previous());
+
+			if ACC_AND_ADD(crl::Token::Type::MUT);
+			EXP_AND_ADD(crl::Token::Type::IDENT);
+			this->leave();
+			while(accept(crl::Token::Type::COMMA)){
 				this->enter(crl::Node::Type::ARG);
-				this->add(this->previous());
-				while ACC_AND_ADD(crl::Token::Type::TIMES);
+				EXP_AND_ADD_VAR(TYPE_SPEC());
 
+				if ACC_AND_ADD(crl::Token::Type::MUT);
 				EXP_AND_ADD(crl::Token::Type::IDENT);
 				this->leave();
-				while(accept(crl::Token::Type::COMMA)){
-					this->enter(crl::Node::Type::ARG);
-					EXP_AND_ADD_VAR(TYPE_SPEC());
-					while ACC_AND_ADD(crl::Token::Type::TIMES);
-					if ACC_AND_ADD(crl::Token::Type::MUT);
-					EXP_AND_ADD(crl::Token::Type::IDENT);
-					this->leave();
-				}
 			}
-			expect(crl::Token::Type::RPAREN);
-			expect(crl::Token::Type::LBRACK);
-		
-			this->block(crl::Token::Type::RBRACK);
-		}else{
-var_:
-			this->enter(crl::Node::Type::VAR_DECLARATION);
-			//Dump stored tokens
-			for (size_t i = 0; i < size; i++)
-				this->add(aux[i]);
-
-			if (!_mutable){
-				this->expect(crl::Token::Type::BECOMES);
-				this->enter(crl::Node::Type::ASSIGN);
-				this->expression();
-				this->leave();
-			}else{
-				if (accept(crl::Token::Type::BECOMES)){
-					this->enter(crl::Node::Type::ASSIGN);
-					if (accept(crl::Token::Type::STRING))
-						this->add(this->previous());
-					else
-						this->expression();
-					this->leave();
-				}
-			}
-			
-			expect(crl::Token::Type::SEMICLN);
 		}
+		expect(crl::Token::Type::RPAREN);
+		expect(crl::Token::Type::LBRACK);
+		if (!is_cas)	
+			this->block(crl::Token::Type::RBRACK);
+		else{
+			while(accept(crl::Token::Type::STRING)){
+				this->add(this->previous());
+				this->expect(crl::Token::Type::SEMICLN);
+			}
+			this->expect(crl::Token::Type::RBRACK);
+		}
+	}else{
+var_:
+		this->enter(crl::Node::Type::VAR_DECLARATION);
+		//Dump stored tokens
+		for (size_t i = 0; i < size; i++)
+			this->add(aux[i]);
+
+		if (!_mutable){
+			this->expect(crl::Token::Type::BECOMES);
+			this->enter(crl::Node::Type::ASSIGN);
+			this->expression();
+			this->leave();
+		}else{
+			if (accept(crl::Token::Type::BECOMES)){
+				this->enter(crl::Node::Type::ASSIGN);
+				if (accept(crl::Token::Type::STRING))
+					this->add(this->previous());
+				else
+					this->expression();
+				this->leave();
+			}
+		}
+		
+		expect(crl::Token::Type::SEMICLN);
 	}
+	
 	this->leave();
 }
 

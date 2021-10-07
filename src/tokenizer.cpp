@@ -80,6 +80,8 @@ bool Tracker::parse_symbol(std::string str){
 		this->current_token.type = crl::Token::Type::RBRACK;
 	else if (str.compare("$") == 0)
 		this->current_token.type = crl::Token::Type::DOLLAR;
+	else if (str.compare("&") == 0)
+		this->current_token.type = crl::Token::Type::AND;
 	else if (str.compare(":") == 0)
 		this->current_token.type = crl::Token::Type::CLN;
 	else if (str.compare(";") == 0)
