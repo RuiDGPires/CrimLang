@@ -13,7 +13,6 @@ class _sc_Tracker{
 		void leave();
 		void add(Context::Item);
 		
-		std::string current_annotation;
 	public:
 		_sc_Tracker(){this->ast = NULL;}
 		_sc_Tracker(crl::Ast *ast){this->ast = ast;}
@@ -28,6 +27,9 @@ class _sc_Tracker{
 		void func_declaration(crl::Node *);
 		void var_declaration(crl::Node *);
 		void block(crl::Node *);
+		void expression(crl::Node *);
+		void expression(crl::Node *, std::string);
+
 };
 
 void _sc_Tracker::enter(){
@@ -47,10 +49,18 @@ void _sc_Tracker::add(Context::Item item){
 
 void _sc_Tracker::cas(crl::Node *node){
 	Context::Item item;
-	item.name = ((crl::Leaf *)node->get_child(0))->token.str;
-	item.type = Context::Item::Type::FUNC;
-	item.subtype = "cas";
-	item.args = std::vector<std::string>(atoi(((crl::Leaf *)node->get_child(1))->token.str.c_str()), "void *");
+	item.type = Context::Item::Type::CAS;
+	item.subtype = ((crl::Leaf *)node->get_child(0))->token.str;
+	item.name = ((crl::Leaf *)node->get_child(1))->token.str;
+
+
+	for (int i = 2; node->get_child(i)->type == crl::Node::Type::ARG; i++){
+		crl::Node *arg = node->get_child(i);
+		std::string var_type = ((crl::Leaf *) arg->get_child(0))->token.str;
+
+		item.args.push_back(std::pair<std::string, bool>(var_type, arg->annotation == "mut"));
+	}
+
 	this->add(item);
 }
 
@@ -58,41 +68,28 @@ void _sc_Tracker::func_declaration(crl::Node *node){
 	Context::Item item;
 	item.type = Context::Item::Type::FUNC;
 	item.subtype = ((crl::Leaf *)node->get_child(0))->token.str;
-	int i = 1;
-	while(((crl::Leaf *)node->get_child(i++))->token.type == crl::Token::Type::TIMES)
-		item.subtype += "*";
+	item.name = ((crl::Leaf *)node->get_child(1))->token.str;
 
-	item.name = ((crl::Leaf *)node->get_child(i++))->token.str;
-	
-	int args_index = i;
-
-	// Needs to pass the arguments once to add the function interface to the context
-	while(node->get_child(i)->type == crl::Node::Type::ARG){
+	// Parse once to add to the args to the declaration
+	for (int i = 2; node->get_child(i)->type == crl::Node::Type::ARG; i++){
 		crl::Node *arg = node->get_child(i);
 		std::string var_type = ((crl::Leaf *) arg->get_child(0))->token.str;
-		int j = 1;
-		while(((crl::Leaf *)node->get_child(j++))->token.type == crl::Token::Type::TIMES)
-			var_type += "*";
 
-		item.args.push_back(var_type);
-		i++;
+		item.args.push_back(std::pair<std::string, bool>(var_type, arg->annotation == "mut"));
 	}
+
 	this->add(item);
+
 	this->enter();
-	// Get back to the arguments to add each one to the context
-	i = args_index;
-
-	while(node->get_child(i)->type == crl::Node::Type::ARG){
+	// Add args to the function context
+	int i = 2;
+	for (; node->get_child(i)->type == crl::Node::Type::ARG; i++){
 		crl::Node *arg = node->get_child(i);
-		Context::Item item;
-		item.type = Context::Item::Type::VAR;
-		item.subtype = ((crl::Leaf *) arg->get_child(0))->token.str;
-		int j = 1;
-		while(((crl::Leaf *)node->get_child(j++))->token.type == crl::Token::Type::TIMES)
-			item.subtype += "*";
-
-		item.name = ((crl::Leaf *)node->get_child(j++))->token.str;
-		this->add(item);
+		Context::Item arg_item;
+		arg_item.type = Context::Item::Type::VAR;
+		arg_item.subtype = ((crl::Leaf *) arg->get_child(0))->token.str;
+		arg_item.name = ((crl::Leaf *) node->get_child(1))->token.str;
+		this->add(arg_item);
 	}
 	this->block(node->get_child(i));
 	this->leave();
@@ -102,23 +99,23 @@ void _sc_Tracker::var_declaration(crl::Node *node){
 	Context::Item item;
 	item.type = Context::Item::Type::VAR;
 	item.subtype = ((crl::Leaf *) node->get_child(0))->token.str;
-	
-	int i = 1;
-	while(((crl::Leaf *)node->get_child(i++))->token.type == crl::Token::Type::TIMES)
-		item.subtype += "*";
 
-	if(((crl::Leaf *)node->get_child(i++))->token.type == crl::Token::Type::MUT)
+	if (node->annotation == "mut")
 		item._mutable = true;
 
+
+	if (node->get_child(1)->type == crl::Node::Type::ASSIGN)
+		this->expression(node->get_child(1)->get_child(0), item.subtype);
+
 	this->add(item);
-
-	// CHECK EXPRESSIONNNNNNNNNNNNNNNNNN
-
-	return;
 }
 
 void _sc_Tracker::block(crl::Node *node){
 
+}
+
+void _sc_Tracker::expression(crl::Node *node, std::string annotation){
+	
 }
 
 void _sc_Tracker::program(crl::Node *node){
@@ -131,8 +128,10 @@ void _sc_Tracker::program(crl::Node *node){
 			this->func_declaration(child);
 		else if (child->type == crl::Node::Type::VAR_DECLARATION)
 			this->var_declaration(child);
-		else
+		else if (child->type == crl::Node::Type::CAS)
 			this->cas(child);
+		else
+			throw "???";
 	}	
 }
 void _sc_Tracker::check(){

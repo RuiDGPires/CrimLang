@@ -28,6 +28,7 @@ class _ps_Tracker{
 		void enter(crl::Node::Type);
 		void add(crl::Token);
 		void leave();
+		void annotate(std::string);
 		crl::Ast *result();
 
 
@@ -113,6 +114,10 @@ void _ps_Tracker::enter(crl::Node::Type t){
 
 void _ps_Tracker::leave(){
 	this->ast = this->ast->parent;
+}
+
+void _ps_Tracker::annotate(std::string s){
+	this->ast->annotation = s;
 }
 
 void _ps_Tracker::add(crl::Token t){
@@ -267,6 +272,7 @@ void _ps_Tracker::statement(){
 	}else if (accept(crl::Token::Type::IDENT)){
 		if (this->current.type == crl::Token::Type::LPAREN){
 				this->func_call();
+				this->expect(crl::Token::Type::SEMICLN);
 		}else{
 			this->enter(crl::Node::Type::ASSIGN);
 			this->add(this->previous());
@@ -285,7 +291,7 @@ void _ps_Tracker::statement(){
 
 		bool _mutable = accept(crl::Token::Type::MUT);
 		if (_mutable)
-			this->add(this->previous());
+			this->annotate("mut");
 
 		EXP_AND_ADD(crl::Token::Type::IDENT);
 
@@ -320,16 +326,15 @@ void _ps_Tracker::declaration(){
 	// aux will be used to stor tokens until it's know if this is a declaration of a function or a variable
 	std::vector<crl::Token> aux;
 	bool is_cas = false;
-	if (accept(crl::Token::Type::CAS)) 
-		is_cas=true;
-	else	
-		expect TYPE_SPEC();
 
+	expect TYPE_SPEC();
 	aux.push_back(this->previous());
 
+	if (accept(crl::Token::Type::CAS)) 
+		is_cas=true;
+
+
 	bool _mutable = accept(crl::Token::Type::MUT);
-	if (_mutable)
-		aux.push_back(this->previous());
 	
 	expect(crl::Token::Type::IDENT);
 	aux.push_back(this->previous());
@@ -352,14 +357,19 @@ void _ps_Tracker::declaration(){
 			this->enter(crl::Node::Type::ARG);
 			this->add(this->previous());
 
-			if ACC_AND_ADD(crl::Token::Type::MUT);
+			if (accept(crl::Token::Type::MUT))
+				this->annotate("mut");
+
 			EXP_AND_ADD(crl::Token::Type::IDENT);
+
 			this->leave();
 			while(accept(crl::Token::Type::COMMA)){
 				this->enter(crl::Node::Type::ARG);
 				EXP_AND_ADD_VAR(TYPE_SPEC());
 
-				if ACC_AND_ADD(crl::Token::Type::MUT);
+				if (accept(crl::Token::Type::MUT))
+					this->annotate("mut");
+
 				EXP_AND_ADD(crl::Token::Type::IDENT);
 				this->leave();
 			}
@@ -388,6 +398,7 @@ var_:
 			this->expression();
 			this->leave();
 		}else{
+			this->annotate("mut");
 			if (accept(crl::Token::Type::BECOMES)){
 				this->enter(crl::Node::Type::ASSIGN);
 				if (accept(crl::Token::Type::STRING))

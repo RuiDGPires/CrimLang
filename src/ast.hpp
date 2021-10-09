@@ -15,7 +15,7 @@ namespace crl{
 			std::vector<Node *>  children;
 			Node *parent;
 			
-			std::string decorator;
+			std::string annotation;
 
 			Node();
 			Node(Type, Node *);
