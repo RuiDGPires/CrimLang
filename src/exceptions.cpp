@@ -22,7 +22,7 @@ namespace crl{
 		this->msg = t.str;
 	}
 
-	SyntaxError::SyntaxError(std::string s){
+	SyntaxError::SyntaxError(int l, int c, std::string s) : CL_Exception(l, c){
 		this->name = "Syntax Error";
 		this->msg = s;
 	}

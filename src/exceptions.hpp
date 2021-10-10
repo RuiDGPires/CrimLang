@@ -16,7 +16,7 @@ namespace crl{
 	
 	class SyntaxError : public CL_Exception{
 		public:
-			SyntaxError(std::string);
+			SyntaxError(int, int, std::string);
 	};
 
 	class UnexpectedToken : public CL_Exception {
