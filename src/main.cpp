@@ -14,8 +14,8 @@ int main(int argc, char *argv[]){
 	try{
 		//print_token_vec(crl::tokenize(argv[1]));
 		crl::Ast *ast = crl::generate_ast(crl::tokenize(argv[1]));
-		std::cout << ast->to_string();
-		//crl::semantic_check(ast);
+		std::cout << ast->to_string() << std::endl;
+		crl::semantic_check(ast);
 		//generate_cas(ast, "b.cas");
 		delete ast;
 	}catch(std::string &e){

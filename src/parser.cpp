@@ -143,9 +143,11 @@ void _ps_Tracker::func_call(){
 	if (this->current.type != crl::Token::Type::RPAREN){
 		do{
 			this->enter(crl::Node::Type::ARG);
-			if (this->accept(crl::Token::Type::AND))
+			if (this->accept(crl::Token::Type::AND)){
+				this->annotate("ref");
 				this->expect(crl::Token::IDENT);
-			else
+				this->add(this->previous());
+			} else
 				this->expression();
 			this->leave();
 		}while(this->accept(crl::Token::Type::COMMA));
@@ -172,8 +174,6 @@ void _ps_Tracker::factor(){
 	}
 	this->leave();
 }
-
-
 
 void _ps_Tracker::term(){
 	this->enter(crl::Node::Type::TERM);
@@ -213,8 +213,6 @@ void _ps_Tracker::block(crl::Token::Type t){
 }
 
 void _ps_Tracker::statement(){
-	this->enter(crl::Node::Type::STATEMENT);
-
 	if (accept(crl::Token::Type::IF)){
 		this->enter(crl::Node::Type::IF);
 		this->expect(crl::Token::Type::LPAREN);
@@ -226,7 +224,6 @@ void _ps_Tracker::statement(){
 		else{
 			this->statement();
 		}
-		this->leave();
 	}else if (accept(crl::Token::Type::ELSE)){
 		this->enter(crl::Node::Type::ELSE);
 		if (accept(crl::Token::Type::LBRACK))
@@ -234,7 +231,6 @@ void _ps_Tracker::statement(){
 		else
 			this->statement();
 		
-		this->leave();
 	}else if (accept(crl::Token::Type::WHILE)){
 		this->enter(crl::Node::Type::WHILE);
 		this->expect(crl::Token::Type::LPAREN);
@@ -245,7 +241,6 @@ void _ps_Tracker::statement(){
 			this->block(crl::Token::Type::RBRACK);
 		else
 			this->statement();
-		this->leave();
 	}else if (accept(crl::Token::Type::FOR)){
 		this->enter(crl::Node::Type::FOR);
 		this->expect(crl::Token::Type::LPAREN);
@@ -262,8 +257,6 @@ void _ps_Tracker::statement(){
 			this->block(crl::Token::Type::RBRACK);
 		else
 			this->statement();
-		this->leave();
-		this->leave();
 	}else if (accept(crl::Token::Type::RETURN)){
 		this->enter(crl::Node::Type::RETURN);
 		this->expression();
@@ -282,7 +275,6 @@ void _ps_Tracker::statement(){
 			else
 				this->expression();
 			this->expect(crl::Token::Type::SEMICLN);
-			this->leave();
 		}
 	}else if (accept TYPE_SPEC()){
 		this->enter(crl::Node::Type::INIT);
@@ -315,7 +307,6 @@ void _ps_Tracker::statement(){
 		}
 		
 		expect(crl::Token::Type::SEMICLN);
-		this->leave();
 	}else
 		throw std::string("Unexpected token: " + this->current.str);
 	
@@ -326,8 +317,13 @@ void _ps_Tracker::declaration(){
 	// aux will be used to stor tokens until it's know if this is a declaration of a function or a variable
 	std::vector<crl::Token> aux;
 	bool is_cas = false;
+	bool is_void = false;
 
-	expect TYPE_SPEC();
+	if (accept(crl::Token::Type::VOID))
+		is_void = true;
+	else		
+		expect TYPE_SPEC();
+	
 	aux.push_back(this->previous());
 
 	if (accept(crl::Token::Type::CAS)) 
@@ -387,6 +383,7 @@ void _ps_Tracker::declaration(){
 		}
 	}else{
 var_:
+		if (is_void) throw std::string("Variables can't have type void");
 		this->enter(crl::Node::Type::VAR_DECLARATION);
 		//Dump stored tokens
 		for (size_t i = 0; i < size; i++)

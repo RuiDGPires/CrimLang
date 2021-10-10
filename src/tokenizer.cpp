@@ -126,6 +126,8 @@ void Tracker::check_keyword(){
 		this->current_token.type = crl::Token::Type::FOR;
 	else if (this->current_token.str.compare("mut") == 0)
 		this->current_token.type = crl::Token::Type::MUT;
+	else if (this->current_token.str.compare("void") == 0)
+		this->current_token.type = crl::Token::Type::VOID;
 	else if (this->current_token.str.compare("char") == 0)
 		this->current_token.type = crl::Token::Type::TCHAR;
 	else if (this->current_token.str.compare("i32") == 0)

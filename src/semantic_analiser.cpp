@@ -5,6 +5,10 @@ static void assert(bool v, std::string s){
 	if (!v) throw "Assertion error: " + s;
 }
 
+static crl::Token get_token(crl::Node *node){
+	return ((crl::Leaf *)node)->token;
+}
+
 class _sc_Tracker{
 	private:
 		crl::Ast *ast;
@@ -27,7 +31,9 @@ class _sc_Tracker{
 		void func_declaration(crl::Node *);
 		void var_declaration(crl::Node *);
 		void block(crl::Node *);
-		void expression(crl::Node *);
+
+		void statement(crl::Node *);
+		void func_call(crl::Node *, std::string);
 		void expression(crl::Node *, std::string);
 
 };
@@ -43,7 +49,7 @@ void _sc_Tracker::leave(){
 }
 
 void _sc_Tracker::add(Context::Item item){
-	if (this->context->has_name(item.name)) throw std::string("Multiple declarations"); // TODO
+	if (this->context->has_name_local(item.name)) throw std::string("Multiple declarations"); // TODO
 	else (this->context->add(item));
 }
 
@@ -99,23 +105,94 @@ void _sc_Tracker::var_declaration(crl::Node *node){
 	Context::Item item;
 	item.type = Context::Item::Type::VAR;
 	item.subtype = ((crl::Leaf *) node->get_child(0))->token.str;
+	item.name = ((crl::Leaf *) node->get_child(1))->token.str;
 
 	if (node->annotation == "mut")
 		item._mutable = true;
 
 
-	if (node->get_child(1)->type == crl::Node::Type::ASSIGN)
-		this->expression(node->get_child(1)->get_child(0), item.subtype);
-
+	if (node->children.size() == 3){
+		assert(node->get_child(2)->type == crl::Node::Type::ASSIGN, "fishy");
+		if (node->get_child(2)->get_child(0)->type == crl::Node::Type::EXPRESSION)
+			this->expression(node->get_child(2)->get_child(0), item.subtype);
+	}
 	this->add(item);
 }
 
+void _sc_Tracker::statement(crl::Node *node){
+	switch(node->type){
+		case crl::Node::Type::CALL:
+			this->func_call(node, "void");
+			break;
+		case crl::Node::Type::ASSIGN:
+			{
+				Context::Item item = this->context->seek(get_token(node->get_child(0)).str);
+				assert(item.type == Context::Item::Type::VAR, "Can only assign values to variables");
+				assert(item._mutable, "Can only assign mutable variables");
+				if (node->get_child(1)->type == crl::Node::EXPRESSION)
+					this->expression(node->get_child(1), item.subtype);
+			}
+			break;
+		case crl::Node::Type::INIT:
+			this->var_declaration(node);
+			break;
+		default:
+			throw std::string("what is this");
+	}
+}
+
 void _sc_Tracker::block(crl::Node *node){
+	size_t size = node->children.size();
+	for (size_t i = 0; i < size; i++){
+		this->statement(node->get_child(i));
+	}
+}
+
+
+void _sc_Tracker::func_call(crl::Node *node, std::string annotation){
+	size_t size = node->children.size();
+	Context::Item item = this->context->seek((get_token(node->get_child(0)).str));
+
+	if (item.type != Context::Item::Type::FUNC && item.type != Context::Item::Type::CAS) throw std::string("Invalid call");
+
+	assert(item.subtype == annotation, "Return type does not match expression type");
+	
+	assert(item.args.size() == size - 1, "Functions do not match");
+
+	for (size_t i = 1; i < size; i++){
+		crl::Node *arg = node->get_child(i);
+		if (arg->type != crl::Node::Type::ARG) throw std::string("fishy args");
+		if (item.args[i-1].second){
+			assert(arg->annotation == "ref", "Mutable function argments must be passed as references");
+			Context::Item aux = this->context->seek(get_token(arg->get_child(0)).str);
+			assert(aux.type == Context::Item::Type::VAR, "No variable with this name");
+			assert(aux._mutable, "Variable must be mutable to be passed by reference");
+			assert(aux.subtype == item.args[i-1].first, "Passed variable type does not match function argument type");
+		}else
+			this->expression(arg->get_child(0), annotation);
+	}
 
 }
 
 void _sc_Tracker::expression(crl::Node *node, std::string annotation){
-	
+	size_t size = node->children.size();
+
+	for (size_t i = 0; i < size; i++){
+		switch (node->get_child(i)->type){
+		case crl::Node::Type::CALL:
+			this->func_call(node->get_child(i), annotation);
+			break;
+		case crl::Node::Type::LEAF:
+			if (((crl::Leaf *) node->get_child(i))->token.type == crl::Token::Type::IDENT){
+				Context::Item item = this->context->seek(((crl::Leaf *) node->get_child(i))->token.str);
+				if (item.type != Context::Item::Type::VAR || item.subtype != annotation) throw std::string("Identifier has not been defined");
+			}
+			break;
+		default:
+			this->expression(node->get_child(i), annotation);
+			break;
+		}
+	}
 }
 
 void _sc_Tracker::program(crl::Node *node){

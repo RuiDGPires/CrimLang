@@ -33,7 +33,8 @@ class Context{
 
 		Context *parent;
 		Item seek(std::string); // Seek for an item in current and above scopes
-		bool has_name(std::string); // Checks if current scope has the given name
+		bool has_name_local(std::string); // Checks if current scope has the given name
+		bool has_name(std::string);
 		bool has(Item &); // Checks if item is defined in the given and above scopes
 		void add(Item);
 

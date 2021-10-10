@@ -18,8 +18,13 @@ Context::Item Context::seek(std::string name){
 		return this->table.at(name);
 }
 
-bool Context::has_name(std::string name){
+bool Context::has_name_local(std::string name){
 	return this->table.count(name) != 0;
+}
+
+bool Context::has_name(std::string name){
+	Context::Item a = seek(name);
+	return a.type != Context::Item::Type::NONE;
 }
 
 bool Context::has(Context::Item &item){
