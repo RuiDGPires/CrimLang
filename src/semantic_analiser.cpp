@@ -30,9 +30,9 @@ class _sc_Tracker{
 		void cas(crl::Node *);
 		void func_declaration(crl::Node *);
 		void var_declaration(crl::Node *);
-		void block(crl::Node *);
 
-		void statement(crl::Node *);
+		void statement(crl::Node *, std::string);
+		void block(crl::Node *, std::string);
 		void func_call(crl::Node *, std::string);
 		void expression(crl::Node *, std::string);
 
@@ -97,7 +97,7 @@ void _sc_Tracker::func_declaration(crl::Node *node){
 		arg_item.name = ((crl::Leaf *) node->get_child(1))->token.str;
 		this->add(arg_item);
 	}
-	this->block(node->get_child(i));
+	this->block(node->get_child(i), item.subtype);
 	this->leave();
 }
 
@@ -119,10 +119,42 @@ void _sc_Tracker::var_declaration(crl::Node *node){
 	this->add(item);
 }
 
-void _sc_Tracker::statement(crl::Node *node){
+void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 	switch(node->type){
+		case crl::Node::Type::NONE:
+			break;
 		case crl::Node::Type::CALL:
 			this->func_call(node, "void");
+			break;
+		case crl::Node::Type::RETURN:
+			this->expression(node->get_child(0), annotation);
+			break;
+		case crl::Node::Type::IF:
+			this->expression(node->get_child(0), "i32");
+			assert(node->get_child(1)->type == crl::Node::Type::THEN, "Fishy if then");
+			if (node->get_child(1)->get_child(0)->type == crl::Node::Type::BLOCK)
+				this->block(node->get_child(1)->get_child(0), annotation);
+			else
+				this->statement(node->get_child(1)->get_child(0), annotation);
+			
+			if (node->children.size() == 3){
+				assert(node->get_child(2)->type == crl::Node::Type::ELSE, "Fishy if else");
+				if (node->get_child(2)->get_child(0)->type == crl::Node::Type::BLOCK)
+					this->block(node->get_child(2)->get_child(0), annotation);
+				else
+					this->statement(node->get_child(2)->get_child(0), annotation);
+			}
+
+			break;
+		case crl::Node::Type::WHILE:
+			this->expression(node->get_child(0), "i32");
+			if (node->get_child(1)->get_child(0)->type == crl::Node::Type::BLOCK)
+				this->block(node->get_child(1)->get_child(0), annotation);
+			else
+				this->statement(node->get_child(1)->get_child(0), annotation);
+			break;
+		case crl::Node::Type::FOR:
+
 			break;
 		case crl::Node::Type::ASSIGN:
 			{
@@ -141,10 +173,10 @@ void _sc_Tracker::statement(crl::Node *node){
 	}
 }
 
-void _sc_Tracker::block(crl::Node *node){
+void _sc_Tracker::block(crl::Node *node, std::string annotation){
 	size_t size = node->children.size();
 	for (size_t i = 0; i < size; i++){
-		this->statement(node->get_child(i));
+		this->statement(node->get_child(i), annotation);
 	}
 }
 

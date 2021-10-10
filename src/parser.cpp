@@ -213,24 +213,31 @@ void _ps_Tracker::block(crl::Token::Type t){
 }
 
 void _ps_Tracker::statement(){
-	if (accept(crl::Token::Type::IF)){
+	if (accept(crl::Token::Type::SEMICLN))
+		this->enter(crl::Node::Type::NONE);
+	else if (accept(crl::Token::Type::IF)){
 		this->enter(crl::Node::Type::IF);
+
 		this->expect(crl::Token::Type::LPAREN);
 		this->expression();	
 		this->expect(crl::Token::Type::RPAREN);
 
-		if (accept(crl::Token::Type::LBRACK))
-			this->block(crl::Token::Type::RBRACK);
-		else{
-			this->statement();
-		}
-	}else if (accept(crl::Token::Type::ELSE)){
-		this->enter(crl::Node::Type::ELSE);
+		this->enter(crl::Node::Type::THEN);
 		if (accept(crl::Token::Type::LBRACK))
 			this->block(crl::Token::Type::RBRACK);
 		else
 			this->statement();
 		
+		this->leave(); // LEAVE THEN
+
+		if (accept(crl::Token::Type::ELSE)){
+			this->enter(crl::Node::Type::ELSE);
+			if (accept(crl::Token::Type::LBRACK))
+				this->block(crl::Token::Type::RBRACK);
+			else
+				this->statement();
+			this->leave();
+		}
 	}else if (accept(crl::Token::Type::WHILE)){
 		this->enter(crl::Node::Type::WHILE);
 		this->expect(crl::Token::Type::LPAREN);
