@@ -120,8 +120,8 @@ void _sc_Tracker::var_declaration(crl::Node *node){
 
 	if (node->children.size() == 3){
 		ASSERT(node->get_child(2)->type == crl::Node::Type::ASSIGN, "Must be assign if children size is 3");
-		if (node->get_child(2)->get_child(0)->type == crl::Node::Type::EXPRESSION)
-			this->expression(node->get_child(2)->get_child(0), item.subtype);
+		ASSERT(node->get_child(2)->get_child(0)->type == crl::Node::Type::EXPRESSION, "Must assign an expression");
+		this->expression(node->get_child(2)->get_child(0), item.subtype);
 	}
 	this->add(item);
 }
@@ -243,7 +243,13 @@ void _sc_Tracker::expression(crl::Node *node, std::string annotation){
 			if (((crl::Leaf *) node->get_child(i))->token.type == crl::Token::Type::IDENT){
 				Context::Item item = this->context->seek(((crl::Leaf *) node->get_child(i))->token.str);
 				ASSERT(item.type == Context::Item::Type::VAR && item.subtype == annotation, "Identifier has not been defined");
-			}
+			}else if (((crl::Leaf *) node->get_child(i))->token.type == crl::Token::Type::INT){
+				ASSERT(annotation == "i32" || annotation == "u32" || annotation == "char" || annotation == "i64" || annotation == "u64", "Must have integer or unsigned type");
+			}else if (((crl::Leaf *) node->get_child(i))->token.type == crl::Token::Type::DEC){
+				ASSERT(annotation == "f32" || annotation == "f64", "Must have float type");
+			}else if (((crl::Leaf *) node->get_child(i))->token.type == crl::Token::Type::STRING){
+				ASSERT(annotation == "string", "Must have string type");
+			}else ASSERT(false, "Unkown type");
 			break;
 		default:
 			this->expression(node->get_child(i), annotation);

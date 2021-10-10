@@ -127,7 +127,7 @@ crl::Ast *_ps_Tracker::result(){
 	return this->aux;
 }
 
-#define TYPE_SPEC() (7, crl::Token::Type::VOID, crl::Token::Type::CHAR, crl::Token::Type::U32, crl::Token::Type::I32, crl::Token::Type::CHAR, crl::Token::Type::F32, crl::Token::Type::F64)
+#define TYPE_SPEC() (7, crl::Token::Type::VOID, crl::Token::Type::TCHAR, crl::Token::Type::TSTR, crl::Token::Type::U32, crl::Token::Type::I32, crl::Token::Type::F32, crl::Token::Type::F64)
 #define TYPE_NUMERIC() (3, crl::Token::Type::INT, crl::Token::Type::DEC, crl::Token::Type::CHAR)
 #define ACC_AND_ADD(type) (accept(type)) this->add(this->previous())
 #define EXP_AND_ADD(type) (expect(type)); this->add(this->previous())
@@ -164,6 +164,7 @@ void _ps_Tracker::factor(){
 		}else
 			this->add(this->previous());
 	} 
+	else if ACC_AND_ADD(crl::Token::Type::STRING);
 	else if ACC_AND_ADD_VAR(TYPE_NUMERIC());
 	else if (accept(crl::Token::Type::LPAREN)){
 		this->expression();
@@ -277,10 +278,7 @@ void _ps_Tracker::statement(){
 			this->enter(crl::Node::Type::ASSIGN);
 			this->add(this->previous());
 			this->expect(crl::Token::Type::BECOMES);
-			if (accept(crl::Token::Type::STRING))
-				this->add(this->previous());
-			else
-				this->expression();
+			this->expression();
 			this->expect(crl::Token::Type::SEMICLN);
 		}
 	}else if (accept TYPE_SPEC()){
@@ -297,18 +295,12 @@ void _ps_Tracker::statement(){
 		if (!_mutable){
 			this->enter(crl::Node::Type::ASSIGN);
 			expect(crl::Token::Type::BECOMES);
-			if (accept(crl::Token::Type::STRING))
-				this->add(this->previous());
-			else
-				this->expression();
+			this->expression();
 			this->leave();
 		}else{
 			if (accept(crl::Token::Type::BECOMES)){
 				this->enter(crl::Node::Type::ASSIGN);
-				if (accept(crl::Token::Type::STRING))
-					this->add(this->previous());
-				else
-					this->expression();
+				this->expression();
 				this->leave();
 			}
 		}
@@ -405,10 +397,7 @@ var_:
 			this->annotate("mut");
 			if (accept(crl::Token::Type::BECOMES)){
 				this->enter(crl::Node::Type::ASSIGN);
-				if (accept(crl::Token::Type::STRING))
-					this->add(this->previous());
-				else
-					this->expression();
+				this->expression();
 				this->leave();
 			}
 		}

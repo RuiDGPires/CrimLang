@@ -130,6 +130,8 @@ void Tracker::check_keyword(){
 		this->current_token.type = crl::Token::Type::VOID;
 	else if (this->current_token.str.compare("char") == 0)
 		this->current_token.type = crl::Token::Type::TCHAR;
+	else if (this->current_token.str.compare("string") == 0)
+		this->current_token.type = crl::Token::Type::TSTR;
 	else if (this->current_token.str.compare("i32") == 0)
 		this->current_token.type = crl::Token::Type::I32;
 	else if (this->current_token.str.compare("u32") == 0)
