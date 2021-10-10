@@ -17,7 +17,7 @@ static bool is_symbol(char c){
 }
 
 
-static __attribute((unused)) bool is_whitespace(char c){
+static bool is_whitespace(char c){
 	return c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
@@ -157,7 +157,6 @@ void Tracker::dump_eof(){
 }
 
 void Tracker::take(char c){
-
 	if (c == '\n'){
 		if (state == PState::COMMENT) state = PState::NONE;
 		this->line++;
@@ -192,7 +191,9 @@ void Tracker::take(char c){
 				state = PState::CHAR;
 				set_type(crl::Token::Type::CHAR);
 				this->set_pos();
-			}	
+			}else if (is_whitespace(c))
+				break;
+			else throw crl::SyntaxError(line, column, "Unkown character: " + std::string(1, c));
 			break;
 	
 		case PState::IDENT:

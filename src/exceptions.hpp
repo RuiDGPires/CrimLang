@@ -9,7 +9,7 @@ namespace crl{
 			std::string name, msg; 
 			int line, column;
 		public:
-			const char *what() noexcept;	
+			std::string what() noexcept;	
 
 			CL_Exception(int, int);
 	};

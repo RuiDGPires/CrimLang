@@ -20,6 +20,8 @@ int main(int argc, char *argv[]){
 		delete ast;
 	}catch(std::string &e){
 		std::cout << e << std::endl;
+	}catch(crl::CL_Exception &e){
+		std::cout << e.what() << std::endl;
 	}
 	return 0;
 }

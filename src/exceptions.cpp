@@ -9,11 +9,11 @@ namespace crl{
 		this->msg = "";
 	}
 
-	const char *CL_Exception::what() noexcept{
+	std::string CL_Exception::what() noexcept{
 		std::ostringstream o;
 
 		o << this->name << " (" << this->line << ", " << this->column << "): " << this->msg;
-		return o.str().c_str();
+		return o.str();
 	}
 
 
