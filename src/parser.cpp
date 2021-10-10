@@ -84,8 +84,7 @@ bool _ps_Tracker::accept(int n, ...){
 }
 
 void _ps_Tracker::expect(crl::Token::Type t){
-	// TODO : Improve error system
-	if (t != this->current.type) throw std::string("Unexpected token: " + this->current.str);
+	if (t != this->current.type) throw crl::UnexpectedToken(this->current);
 	this->next();
 }
 
@@ -102,7 +101,7 @@ void _ps_Tracker::expect(int n, ...){
 		n--;
 	}
 	va_end(args);
-	if (!res) throw "Unexpected token: " + this->current.str;
+	if (!res) throw crl::UnexpectedToken(this->current); 
 	this->next();
 }
 
@@ -170,7 +169,7 @@ void _ps_Tracker::factor(){
 		this->expression();
 		this->expect(crl::Token::Type::RPAREN);
 	}else{
-		throw std::string("Syntax Error");
+		throw crl::UnexpectedToken(this->current);
 	}
 	this->leave();
 }
@@ -315,7 +314,7 @@ void _ps_Tracker::statement(){
 		
 		expect(crl::Token::Type::SEMICLN);
 	}else
-		throw std::string("Unexpected token: " + this->current.str);
+		throw crl::UnexpectedToken(this->current);
 	
 	this->leave();
 }
@@ -390,7 +389,7 @@ void _ps_Tracker::declaration(){
 		}
 	}else{
 var_:
-		if (is_void) throw std::string("Variables can't have type void");
+		if (is_void) throw crl::SyntaxError(this->current.line, this->current.column, "Variables can't have void type");
 		this->enter(crl::Node::Type::VAR_DECLARATION);
 		//Dump stored tokens
 		for (size_t i = 0; i < size; i++)

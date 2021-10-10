@@ -17,7 +17,7 @@ namespace crl{
 	}
 
 
-	UnexpectedToken::UnexpectedToken(crl::Token t) : CL_Exception(t.line, t.column){
+	UnexpectedToken::UnexpectedToken(crl::Token &t) : CL_Exception(t.line, t.column){
 		this->name = "Unexpected Token";
 		this->msg = t.str;
 	}

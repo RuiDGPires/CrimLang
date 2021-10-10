@@ -21,6 +21,6 @@ namespace crl{
 
 	class UnexpectedToken : public CL_Exception {
 		public:
-			UnexpectedToken(crl::Token);
+			UnexpectedToken(crl::Token&);
 	};
 }
