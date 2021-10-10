@@ -24,11 +24,12 @@ static bool is_whitespace(char c){
 
 class Tracker{
 	private:
-		enum PState{NONE, IDENT, NUM, STRING, CHAR, SYMBOL, COMMENT};
+		enum PState{NONE, IDENT, NUM, STRING, CHAR, SYMBOL, COMMENT, PREPROC};
 		crl::Token current_token;
 		u32 line = 1, column = 0;
 		PState state = NONE;
 		bool str_spec = false; // AUX VARIABLE FOR STRING PARSING
+		int preproc_line = 0;	// 0 if undifined, -1 if not, 1 if yes
 
 		void set_pos();
 		void set_type(crl::Token::Type);
@@ -165,6 +166,12 @@ void Tracker::dump_eof(){
 
 void Tracker::take(char c){
 	if (c == '\n'){
+		if (this->preproc_line == 1){
+			this->current_token.type = crl::Token::Type::PREPROC_END;
+			this->current_token.str = "</PP>";
+			this->dump();
+		}
+		this->preproc_line = 0;
 		if (state == PState::COMMENT) state = PState::NONE;
 		this->line++;
 		this->column = 0;
@@ -175,25 +182,39 @@ void Tracker::take(char c){
 	eval:
 	switch(this->state){
 		case PState::NONE:
-			if (is_letter(c)){
+			if (c == '#'){
+				if (this->preproc_line == 0){
+					this->preproc_line = 1;			
+					this->set_pos();
+					this->current_token.type = crl::Token::Type::PREPROC_START;
+					this->current_token.str = "<PP>";
+					this->dump();
+				}else
+					throw crl::SyntaxError(line, column, "Unexpected #");
+			}else if (is_letter(c)){
+				if (!this->preproc_line) this->preproc_line = -1;
 				state = PState::IDENT;
 				set_type(crl::Token::Type::IDENT);
 				this->push_char(c);
 				this->set_pos();
 			}else if (is_number(c)){
+				if (!this->preproc_line) this->preproc_line = -1;
 				state = PState::NUM;
 				set_type(crl::Token::Type::INT);
 				this->push_char(c);
 				this->set_pos();
 			}else if (is_symbol(c)){
+				if (!this->preproc_line) this->preproc_line = -1;
 				state = PState::SYMBOL;
 				this->set_pos();
 				this->push_char(c);
 			}else if (c == '"'){
+				if (!this->preproc_line) this->preproc_line = -1;
 				state = PState::STRING;
 				set_type(crl::Token::Type::STRING);
 				this->set_pos();
 			}else if (c == '\''){
+				if (!this->preproc_line) this->preproc_line = -1;
 				state = PState::CHAR;
 				set_type(crl::Token::Type::CHAR);
 				this->set_pos();

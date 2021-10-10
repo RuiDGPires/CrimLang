@@ -2,5 +2,5 @@
 examples/*
 crimlang*
 *.swp
-a.txt
+*.crim
 tags

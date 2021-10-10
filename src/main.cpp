@@ -12,11 +12,13 @@ static __attribute((unused)) void print_token_vec(std::vector<crl::Token> vec){
 #define PROGRAM_ENTRY_
 int main(int argc, char *argv[]){
 	try{
-		//print_token_vec(crl::tokenize(argv[1]));
-		crl::Ast *ast = crl::generate_ast(crl::tokenize(argv[1]));
+		std::vector<crl::Token> vec = crl::tokenize(argv[1]);
+		crl::preprocess(vec);
+		print_token_vec(vec);
+		crl::Ast *ast = crl::generate_ast(vec);
 		//std::cout << ast->to_string() << std::endl;
 		crl::semantic_check(ast);
-		//generate_cas(ast, "b.cas");
+		generate_cas(ast, "b.cas");
 		delete ast;
 	}catch(std::string &e){
 		std::cout << e << std::endl;

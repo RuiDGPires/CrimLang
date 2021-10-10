@@ -8,6 +8,7 @@
 
 namespace crl {
 	std::vector<Token> tokenize(std::string);
+	void preprocess(std::vector<Token> &);
 	Ast *generate_ast(std::vector<Token>);
 	void semantic_check(Ast*);
 	void generate_cas(Ast*, std::string);
