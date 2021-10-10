@@ -62,8 +62,7 @@ void _sc_Tracker::cas(crl::Node *node){
 	item.subtype = ((crl::Leaf *)node->get_child(0))->token.str;
 	item.name = ((crl::Leaf *)node->get_child(1))->token.str;
 
-
-	for (int i = 2; node->get_child(i)->type == crl::Node::Type::ARG; i++){
+	for (size_t i = 2; node->get_child(i)->type == crl::Node::Type::ARG; i++){
 		crl::Node *arg = node->get_child(i);
 		std::string var_type = ((crl::Leaf *) arg->get_child(0))->token.str;
 

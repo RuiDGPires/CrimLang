@@ -374,11 +374,13 @@ void _ps_Tracker::declaration(){
 		if (!is_cas)	
 			this->block(crl::Token::Type::RBRACK);
 		else{
+			this->enter(crl::Node::Type::BLOCK);
 			while(accept(crl::Token::Type::STRING)){
 				this->add(this->previous());
 				this->expect(crl::Token::Type::SEMICLN);
 			}
 			this->expect(crl::Token::Type::RBRACK);
+			this->leave();
 		}
 	}else{
 var_:
