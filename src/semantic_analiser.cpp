@@ -19,6 +19,7 @@ class _sc_Tracker{
 		void leave();
 		void add(Context::Item);
 		
+		bool func_returns = false; // Used to check if funcions return at on all possible paths
 	public:
 		_sc_Tracker(){this->ast = NULL;}
 		_sc_Tracker(crl::Ast *ast){this->ast = ast;}
@@ -73,6 +74,7 @@ void _sc_Tracker::cas(crl::Node *node){
 }
 
 void _sc_Tracker::func_declaration(crl::Node *node){
+	this->func_returns = false;
 	Context::Item item;
 	item.type = Context::Item::Type::FUNC;
 	item.subtype = ((crl::Leaf *)node->get_child(0))->token.str;
@@ -100,6 +102,9 @@ void _sc_Tracker::func_declaration(crl::Node *node){
 		this->add(arg_item);
 	}
 	this->block(node->get_child(i), item.subtype);
+	
+	if (item.subtype != "void")
+		ASSERT(func_returns, "Non-void functions must return on all possible paths");
 	this->leave();
 }
 
@@ -129,16 +134,29 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 			this->func_call(node, "void");
 			break;
 		case crl::Node::Type::RETURN:
-			this->expression(node->get_child(0), annotation);
+			this->func_returns = true;
+			if (annotation != "void"){
+				ASSERT(node->children.size() == 1, "Non-void functions must return a value");
+				ASSERT(node->get_child(0)->type == crl::Node::Type::EXPRESSION, "Can only return expressions");
+				this->expression(node->get_child(0), annotation);
+			}else ASSERT(node->children.size() == 0, "Void functions must return no value");
 			break;
 		case crl::Node::Type::IF:
+			{
+			bool aux = this->func_returns;
+			this->func_returns = false;
+
 			this->expression(node->get_child(0), "i32");
 			ASSERT(node->get_child(1)->type == crl::Node::Type::THEN, "If statements MUST have a THEN child");
+
 			if (node->get_child(1)->get_child(0)->type == crl::Node::Type::BLOCK)
 				this->block(node->get_child(1)->get_child(0), annotation);
 			else
 				this->statement(node->get_child(1)->get_child(0), annotation);
 			
+			bool then_returns = this->func_returns; // Check if then statement returns
+			this->func_returns = false;
+
 			ASSERT(node->children.size() < 4, "If statement size is too large");
 			if (node->children.size() == 3){
 				ASSERT(node->get_child(2)->type == crl::Node::Type::ELSE, "If statement has something that isn't an ELSE");
@@ -146,8 +164,12 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 					this->block(node->get_child(2)->get_child(0), annotation);
 				else
 					this->statement(node->get_child(2)->get_child(0), annotation);
-			}
+			}else this->func_returns = false;
 
+			bool else_returns = this->func_returns;
+		
+			this->func_returns = aux | (then_returns && else_returns);	 // CHECK IF FUNCTION RETURNS
+			}
 			break;
 		case crl::Node::Type::WHILE:
 			this->expression(node->get_child(0), "i32");
@@ -188,7 +210,7 @@ void _sc_Tracker::func_call(crl::Node *node, std::string annotation){
 	size_t size = node->children.size();
 	Context::Item item = this->context->seek((get_token(node->get_child(0)).str));
 
-	ASSERT(item.type != Context::Item::Type::FUNC && item.type != Context::Item::Type::CAS, "Invalid call");
+	ASSERT(item.type == Context::Item::Type::FUNC || item.type == Context::Item::Type::CAS, "'" + item.name + "' is not a function");
 
 	ASSERT(item.subtype == annotation, "Return type does not match expression type");
 	
