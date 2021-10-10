@@ -110,6 +110,11 @@ bool Tracker::parse_symbol(std::string str){
 		this->current_token.type = crl::Token::Type::LSS;
 	else if (str.compare("!=") == 0)
 		this->current_token.type = crl::Token::Type::NEQ;
+	else if (str.compare("//") == 0){
+		this->current_token.type = crl::Token::Type::NONE;
+		this->current_token.str = ""; 
+		this->state = PState::COMMENT;
+	}
 	else return 0;
 
 	return 1;
@@ -170,8 +175,7 @@ void Tracker::take(char c){
 	eval:
 	switch(this->state){
 		case PState::NONE:
-			if (c == '#') state = PState::COMMENT;
-			else if (is_letter(c)){
+			if (is_letter(c)){
 				state = PState::IDENT;
 				set_type(crl::Token::Type::IDENT);
 				this->push_char(c);
@@ -225,14 +229,17 @@ void Tracker::take(char c){
 		case PState::SYMBOL:
 			if (is_symbol(c)){
 				if (this->parse_symbol(this->current_token.str + c)){
+					if (this->state == PState::COMMENT) break;
 					this->push_char(c);
 				}else{
 					if (this->parse_symbol(this->current_token.str)){
+						if (this->state == PState::COMMENT) break;
 						this->dump();
 						goto eval;
 					}else throw crl::SyntaxError(line, column, "Unkown symbol: " + this->current_token.str); 
 				}
 			}else if (this->parse_symbol(this->current_token.str)){
+				if (this->state == PState::COMMENT) break;
 				this->dump();
 				goto eval;
 			}else throw crl::SyntaxError(line, column, "Unkown symbol: " + this->current_token.str); 
