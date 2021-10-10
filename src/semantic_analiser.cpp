@@ -1,9 +1,11 @@
 #include "compiler.hpp"
 #include "context.hpp"
 
-static void assert(bool v, std::string s){
-	if (!v) throw "Assertion error: " + s;
-}
+#ifdef DEBUG
+#define ASSERT(v, s) if (!v) throw crl::AssertionError(-1, -1, s)
+#else
+#define ASSERT(...)
+#endif
 
 static crl::Token get_token(crl::Node *node){
 	return ((crl::Leaf *)node)->token;
@@ -49,8 +51,8 @@ void _sc_Tracker::leave(){
 }
 
 void _sc_Tracker::add(Context::Item item){
-	if (this->context->has_name_local(item.name)) throw std::string("Multiple declarations"); // TODO
-	else (this->context->add(item));
+	ASSERT(!this->context->has_name_local(item.name), "Multiple declarations"); 
+	this->context->add(item);
 }
 
 void _sc_Tracker::cas(crl::Node *node){
@@ -112,7 +114,7 @@ void _sc_Tracker::var_declaration(crl::Node *node){
 
 
 	if (node->children.size() == 3){
-		assert(node->get_child(2)->type == crl::Node::Type::ASSIGN, "fishy");
+		ASSERT(node->get_child(2)->type == crl::Node::Type::ASSIGN, "Must be assign if children size is 3");
 		if (node->get_child(2)->get_child(0)->type == crl::Node::Type::EXPRESSION)
 			this->expression(node->get_child(2)->get_child(0), item.subtype);
 	}
@@ -131,14 +133,15 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 			break;
 		case crl::Node::Type::IF:
 			this->expression(node->get_child(0), "i32");
-			assert(node->get_child(1)->type == crl::Node::Type::THEN, "Fishy if then");
+			ASSERT(node->get_child(1)->type == crl::Node::Type::THEN, "If statements MUST have a THEN child");
 			if (node->get_child(1)->get_child(0)->type == crl::Node::Type::BLOCK)
 				this->block(node->get_child(1)->get_child(0), annotation);
 			else
 				this->statement(node->get_child(1)->get_child(0), annotation);
 			
+			ASSERT(node->children.size() < 4);
 			if (node->children.size() == 3){
-				assert(node->get_child(2)->type == crl::Node::Type::ELSE, "Fishy if else");
+				ASSERT(node->get_child(2)->type == crl::Node::Type::ELSE, "If statement has something that isn't an ELSE");
 				if (node->get_child(2)->get_child(0)->type == crl::Node::Type::BLOCK)
 					this->block(node->get_child(2)->get_child(0), annotation);
 				else
@@ -159,8 +162,8 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 		case crl::Node::Type::ASSIGN:
 			{
 				Context::Item item = this->context->seek(get_token(node->get_child(0)).str);
-				assert(item.type == Context::Item::Type::VAR, "Can only assign values to variables");
-				assert(item._mutable, "Can only assign mutable variables");
+				ASSERT(item.type == Context::Item::Type::VAR, "Can only assign values to variables");
+				ASSERT(item._mutable, "Can only assign mutable variables");
 				if (node->get_child(1)->type == crl::Node::EXPRESSION)
 					this->expression(node->get_child(1), item.subtype);
 			}
@@ -169,7 +172,7 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 			this->var_declaration(node);
 			break;
 		default:
-			throw std::string("what is this");
+			throw crl::AssertionError(-1, -1, "Unkown node type");
 	}
 }
 
@@ -185,21 +188,21 @@ void _sc_Tracker::func_call(crl::Node *node, std::string annotation){
 	size_t size = node->children.size();
 	Context::Item item = this->context->seek((get_token(node->get_child(0)).str));
 
-	if (item.type != Context::Item::Type::FUNC && item.type != Context::Item::Type::CAS) throw std::string("Invalid call");
+	ASSERT(item.type != Context::Item::Type::FUNC && item.type != Context::Item::Type::CAS, "Invalid call");
 
-	assert(item.subtype == annotation, "Return type does not match expression type");
+	ASSERT(item.subtype == annotation, "Return type does not match expression type");
 	
-	assert(item.args.size() == size - 1, "Functions do not match");
+	ASSERT(item.args.size() == size - 1, "Functions do not match");
 
 	for (size_t i = 1; i < size; i++){
 		crl::Node *arg = node->get_child(i);
-		if (arg->type != crl::Node::Type::ARG) throw std::string("fishy args");
+		ASSERT(arg->type != crl::Node::Type::ARG, "Argument isn't of type ARG");
 		if (item.args[i-1].second){
-			assert(arg->annotation == "ref", "Mutable function argments must be passed as references");
+			ASSERT(arg->annotation == "ref", "Mutable function argments must be passed as references");
 			Context::Item aux = this->context->seek(get_token(arg->get_child(0)).str);
-			assert(aux.type == Context::Item::Type::VAR, "No variable with this name");
-			assert(aux._mutable, "Variable must be mutable to be passed by reference");
-			assert(aux.subtype == item.args[i-1].first, "Passed variable type does not match function argument type");
+			ASSERT(aux.type == Context::Item::Type::VAR, "No variable with this name");
+			ASSERT(aux._mutable, "Variable must be mutable to be passed by reference");
+			ASSERT(aux.subtype == item.args[i-1].first, "Passed variable type does not match function argument type");
 		}else
 			this->expression(arg->get_child(0), annotation);
 	}
@@ -217,7 +220,7 @@ void _sc_Tracker::expression(crl::Node *node, std::string annotation){
 		case crl::Node::Type::LEAF:
 			if (((crl::Leaf *) node->get_child(i))->token.type == crl::Token::Type::IDENT){
 				Context::Item item = this->context->seek(((crl::Leaf *) node->get_child(i))->token.str);
-				if (item.type != Context::Item::Type::VAR || item.subtype != annotation) throw std::string("Identifier has not been defined");
+				ASSERT(item.type == Context::Item::Type::VAR && item.subtype == annotation, "Identifier has not been defined");
 			}
 			break;
 		default:
@@ -232,7 +235,7 @@ void _sc_Tracker::program(crl::Node *node){
 
 	for (size_t i = 0; i < size; i++){
 		crl::Node *child = node->get_child(i);
-		assert(child->type == crl::Node::Type::VAR_DECLARATION || child->type == crl::Node::Type::FUNC_DECLARATION || child->type == crl::Node::Type::CAS, "Program must only have declarations or cas instructions");
+		ASSERT(child->type == crl::Node::Type::VAR_DECLARATION || child->type == crl::Node::Type::FUNC_DECLARATION || child->type == crl::Node::Type::CAS, "Program must only have declarations or cas instructions");
 		if (child->type == crl::Node::Type::FUNC_DECLARATION)
 			this->func_declaration(child);
 		else if (child->type == crl::Node::Type::VAR_DECLARATION)
@@ -240,7 +243,7 @@ void _sc_Tracker::program(crl::Node *node){
 		else if (child->type == crl::Node::Type::CAS)
 			this->cas(child);
 		else
-			throw "???";
+			ASSERT(false, "???");
 	}	
 }
 void _sc_Tracker::check(){

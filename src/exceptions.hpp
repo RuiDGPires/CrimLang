@@ -23,4 +23,9 @@ namespace crl{
 		public:
 			UnexpectedToken(crl::Token&);
 	};
+
+	class AssertionError : public CL_Exception {
+		public:
+			AssertionError(int, int, std::string);
+	};
 }

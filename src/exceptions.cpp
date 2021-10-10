@@ -26,4 +26,9 @@ namespace crl{
 		this->name = "Syntax Error";
 		this->msg = s;
 	}
+
+	AssertionError::AssertionError(int l, int c, std::string s) : CL_Exception(l, c){
+		this->name = "Assertion Error";
+		this->msg = s;
+	}
 }
