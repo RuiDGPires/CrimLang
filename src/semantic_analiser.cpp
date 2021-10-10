@@ -2,7 +2,7 @@
 #include "context.hpp"
 
 #ifdef DEBUG
-#define ASSERT(v, s) if (!v) throw crl::AssertionError(-1, -1, s)
+#define ASSERT(v, s) if (!(v)) throw crl::AssertionError(-1, -1, s)
 #else
 #define ASSERT(...)
 #endif
@@ -139,7 +139,7 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 			else
 				this->statement(node->get_child(1)->get_child(0), annotation);
 			
-			ASSERT(node->children.size() < 4);
+			ASSERT(node->children.size() < 4, "If statement size is too large");
 			if (node->children.size() == 3){
 				ASSERT(node->get_child(2)->type == crl::Node::Type::ELSE, "If statement has something that isn't an ELSE");
 				if (node->get_child(2)->get_child(0)->type == crl::Node::Type::BLOCK)
