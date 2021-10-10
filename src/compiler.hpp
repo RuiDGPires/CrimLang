@@ -1,5 +1,6 @@
 #pragma once
 
+#include "exceptions.hpp"
 #include "defs.h"
 #include "ast.hpp"
 #include <vector>

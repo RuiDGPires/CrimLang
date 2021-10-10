@@ -212,7 +212,7 @@ void Tracker::take(char c){
 				if (this->current_token.type == crl::Token::Type::INT){
 					this->current_token.type = crl::Token::Type::DEC; 
 					this->push_char(c);	
-				}else throw std::string("Invalid numberic format"); // TODO : Change error handling later...
+				}else throw crl::SyntaxError("Invalid numberic format"); 
 			} else {
 				this->dump();	
 				goto eval;
@@ -227,12 +227,12 @@ void Tracker::take(char c){
 					if (this->parse_symbol(this->current_token.str)){
 						this->dump();
 						goto eval;
-					}else throw std::string("Invalid syntax"); // TODO : Change error handling
+					}else throw crl::SyntaxError("Unkown symbol: " + this->current_token.str); 
 				}
 			}else if (this->parse_symbol(this->current_token.str)){
 				this->dump();
 				goto eval;
-			}else throw std::string("Invalid syntax"); // TODO : Change error handling
+			}else throw crl::SyntaxError("Unkown symbol: " + this->current_token.str); 
 			
 			break;
 
@@ -258,17 +258,17 @@ void Tracker::take(char c){
 			{
 			size_t size = this->current_token.str.size();
 			if (size == 0){
-				if (c == '\'') throw std::string("Invalid syntax: Empty char"); // TODO
+				if (c == '\'') throw crl::SyntaxError("Empty char is not allowed"); 
 				this->push_char(c);
 			}else if (size == 1) {
 				if (this->current_token.str[0] == '\\'){
 					if (c == '\'') this->current_token.str.pop_back();
 					this->push_char(c);
 				}else{
-					if (c != '\'') throw std::string("Invalid syntax: invalid char"); // TODO
+					if (c != '\'') throw crl::SyntaxError("Invalid char: " + this->current_token.str); 
 					this->dump();
 				}
-			}else if (c != '\'') throw std::string("Invalid syntax: invalid char"); // TODO 
+			}else if (c != '\'') throw crl::SyntaxError("Invalid char: " + this->current_token.str);
 			else this->dump();
 			}
 			break;
