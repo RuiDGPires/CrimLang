@@ -18,7 +18,7 @@ int main(int argc, char *argv[]){
 		crl::Ast *ast = crl::generate_ast(vec);
 		//std::cout << ast->to_string() << std::endl;
 		crl::semantic_check(ast);
-		generate_cas(ast, "b.cas");
+		generate_cas(ast, argv[2]);
 		delete ast;
 	}catch(std::string &e){
 		std::cout << e << std::endl;
