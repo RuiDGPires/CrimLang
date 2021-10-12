@@ -78,6 +78,7 @@ void _sc_Tracker::func_declaration(crl::Node *node){
 	item.type = Context::Item::Type::FUNC;
 	item.subtype = ((crl::Leaf *)node->get_child(0))->token.str;
 	item.name = ((crl::Leaf *)node->get_child(1))->token.str;
+	ASSERT(item.name != "_start", "_start is a reserved name");
 
 	// Parse once to add to the args to the declaration
 	for (int i = 2; node->get_child(i)->type == crl::Node::Type::ARG; i++){
@@ -276,6 +277,9 @@ void _sc_Tracker::program(crl::Node *node){
 void _sc_Tracker::check(){
 	this->ast = this->ast->get_child(0); // Enter the program	
 	this->program(this->ast);
+	Context::Item item = this->context->seek("main");
+	ASSERT(item.type == Context::Item::Type::FUNC, "Main function is not defined");
+	ASSERT(item.subtype == "i32", "Main function is not defined");
 }
 
 
