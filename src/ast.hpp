@@ -16,6 +16,7 @@ namespace crl{
 			Node *parent;
 			
 			std::string annotation;
+			u32 argc; // Used if function
 
 			Node();
 			Node(Type, Node *);

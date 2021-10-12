@@ -274,6 +274,7 @@ void _ps_Tracker::statement(){
 		if (this->current.type == crl::Token::Type::LPAREN){
 				this->func_call();
 				this->expect(crl::Token::Type::SEMICLN);
+				return;
 		}else{
 			this->enter(crl::Node::Type::ASSIGN);
 			this->add(this->previous());
