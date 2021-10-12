@@ -3,4 +3,5 @@ examples/*
 crimlang*
 *.swp
 *.crim
+*.o
 tags
