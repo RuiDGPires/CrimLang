@@ -11,12 +11,13 @@ static __attribute((unused)) void print_token_vec(std::vector<crl::Token> vec){
 
 #define PROGRAM_ENTRY_
 int main(int argc, char *argv[]){
+	if (argc != 3) {std::cout << "Invalid number of command line arguments\n"; return 0;}
 	try{
 		std::vector<crl::Token> vec = crl::tokenize(argv[1]);
 		crl::preprocess(vec);
-		print_token_vec(vec);
+		//print_token_vec(vec);
 		crl::Ast *ast = crl::generate_ast(vec);
-		//std::cout << ast->to_string() << std::endl;
+		std::cout << ast->to_string() << std::endl;
 		crl::semantic_check(ast);
 		generate_cas(ast, argv[2]);
 		delete ast;
