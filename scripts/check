@@ -1,0 +1,6 @@
+#!/bin/sh
+
+./crimlang_dbg $1 a.cas
+../CrimVm/crimvm -ar a.cas
+echo $?
+rm a.cas
