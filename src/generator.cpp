@@ -134,10 +134,6 @@ class SymbTracker{
 
 			void clean(u32 local_size, std::stringstream &stream){
 				size_t size = local_names.size();
-				stream <<
-					"MVI R1 " << size - local_size << "\n"
-					"ADD RS R1\n";
-
 				for (; size > local_size; size--){
 					std::string name = local_names.front();
 					local_names.pop_front();
@@ -341,8 +337,6 @@ void _gc_Tracker::declaration_cas(crl::Node *node){
 		"MOV RF RS\n";
 
 	symb_tracker.push("R7", stream_funcs);
-	symb_tracker.push("R9", stream_funcs);
-	symb_tracker.push("R8", stream_funcs);
 	symb_tracker.push("RE", stream_funcs);
 
 	// Arguents will be stored on the stack like this:
@@ -378,8 +372,6 @@ void _gc_Tracker::declaration_cas(crl::Node *node){
 		name << "-end:\n" ;
 
 	symb_tracker.pop("RE", stream_funcs);
-	symb_tracker.pop("R8", stream_funcs);
-	symb_tracker.pop("R9", stream_funcs);
 	symb_tracker.pop("RF", stream_funcs);
 
 	this->stream_funcs << 
@@ -410,14 +402,15 @@ void _gc_Tracker::declaration_func(crl::Node *node){
 		"MOV RF RS\n";
 
 	symb_tracker.push("R7", stream_funcs);
-	symb_tracker.push("R9", stream_funcs);
-	symb_tracker.push("R8", stream_funcs);
 	symb_tracker.push("RE", stream_funcs);
+
 
 	// Arguents will be stored on the stack like this:
 	// foo(a, b, c) -> [a b c]
 
 	// TREAT ARGMENTS
+	size_t s = symb_tracker.check();
+	size_t args_size = 0;
 	for(u32 i = 0; i < node->argc; i++){
 		crl::Node *arg = node->get_child(2 + i);
 		std::string type = get_token(arg->get_child(0)).str;
@@ -425,35 +418,37 @@ void _gc_Tracker::declaration_func(crl::Node *node){
 
 		bool is_mut = arg->annotation == "mut";
 		u32 arg_size = is_mut? 1: size_of(type);
+		args_size += arg_size;
 		
 		symb_tracker.arg_create(name, arg_size, is_mut);
 	}
 
-	
+	u32 rollback = symb_tracker.frame_offset;	
 	this->stream_funcs <<
-		"MVI R1 " << symb_tracker.frame_offset << "\n" <<
+		"MVI R1 " << rollback << "\n" <<
 		"ADD RF R1\n"; // Rollback frame
 
 	crl::Node *block = node->get_child(2+node->argc);
 	ASSERT(block->type == crl::Node::Type::BLOCK, "Funcs must have a block");
 	
 
-	size_t s = symb_tracker.check();
 	this->block(block);
-
-
+	symb_tracker.clean(s, stream_funcs);
 
 	this->stream_funcs << 
 		"; End of function\n" <<
-		name << "-end:\n" ;
-
-	symb_tracker.clean(s, stream_funcs);
+		name << "-end:\n" <<
+		"MOV RS RF\n" <<
+		"MVI R1 " << args_size + 2 << "\n" <<
+		"SUB RS R1\n";
+		
 	symb_tracker.pop("RE", stream_funcs);
-	symb_tracker.pop("R8", stream_funcs);
-	symb_tracker.pop("R9", stream_funcs);
 	symb_tracker.pop("RF", stream_funcs);
 
 	this->stream_funcs <<
+		"MVI R2 2\n"
+		"SUB R1 R2\n" <<
+		"ADD RS R1\n" <<
 		"RET\n\n";
 		// The rest is the result (on stack)
 
@@ -462,7 +457,6 @@ void _gc_Tracker::declaration_func(crl::Node *node){
 void _gc_Tracker::return_(crl::Node *node){
 	if (node->children.size() > 0)
 		this->expression(node->get_child(0), stream_funcs);
-
 
 	stream_funcs << 
 		"POP R1\n" <<
@@ -502,10 +496,13 @@ void _gc_Tracker::func_call(crl::Node *node, std::stringstream &stream){
 }
 
 void _gc_Tracker::block(crl::Node *node){
+	size_t s = symb_tracker.check();
 
 	size_t size = node->children.size();
 	for (size_t i = 0; i < size; i++)
 		parse_node(node->get_child(i), stream_funcs);
+
+	symb_tracker.clean(s, stream_funcs);
 }
 
 void _gc_Tracker::init(crl::Node *node){
