@@ -324,12 +324,14 @@ void _gc_Tracker::declaration_cas(crl::Node *node){
 	ASSERT(node->get_child(1)->type == crl::Node::Type::LEAF, "Func declaration must have a name as second token");
 	std::string type = get_token(node->get_child(0)).str;
 	std::string name = get_token(node->get_child(1)).str;
+	this->current_func_name = name;
 	u32 size = size_of(type);
 
 	stream_funcs << name << ":\n"; 
 	
 	// RESULT SPACE ALLOCATION MUST BE DONE BY CALLER
-	symb_tracker.frame_offset = size;
+	
+	symb_tracker.frame_offset = size - 1;
 
 	this->stream_funcs << 
 		";Function " << name << "\n" <<
@@ -339,10 +341,12 @@ void _gc_Tracker::declaration_cas(crl::Node *node){
 	symb_tracker.push("R7", stream_funcs);
 	symb_tracker.push("RE", stream_funcs);
 
+
 	// Arguents will be stored on the stack like this:
 	// foo(a, b, c) -> [a b c]
 
 	// TREAT ARGMENTS
+	size_t args_size = 0;
 	for(u32 i = 0; i < node->argc; i++){
 		crl::Node *arg = node->get_child(2 + i);
 		std::string type = get_token(arg->get_child(0)).str;
@@ -350,13 +354,14 @@ void _gc_Tracker::declaration_cas(crl::Node *node){
 
 		bool is_mut = arg->annotation == "mut";
 		u32 arg_size = is_mut? 1: size_of(type);
+		args_size += arg_size;
 		
 		symb_tracker.arg_create(name, arg_size, is_mut);
 	}
 
-	
+	u32 rollback = symb_tracker.frame_offset;	
 	this->stream_funcs <<
-		"MVI R1 " << symb_tracker.frame_offset << "\n" <<
+		"MVI R1 " << rollback << "\n" <<
 		"ADD RF R1\n"; // Rollback frame
 
 	crl::Node *block = node->get_child(2+node->argc);
@@ -365,21 +370,23 @@ void _gc_Tracker::declaration_cas(crl::Node *node){
 		ASSERT(block->get_child(i)->type == crl::Node::Type::LEAF, "ALL CHILDREN OF CAS DECLARATION MUST BE LEAFS");
 		stream_funcs << get_token(block->get_child(i)).str << "\n";
 	}
-	
 
 	this->stream_funcs << 
 		"; End of function\n" <<
-		name << "-end:\n" ;
-
+		name << "-end:\n" <<
+		"MOV RS RF\n" <<
+		"MVI R1 " << args_size + 2 << "\n" <<
+		"SUB RS R1\n";
+		
 	symb_tracker.pop("RE", stream_funcs);
 	symb_tracker.pop("RF", stream_funcs);
 
-	this->stream_funcs << 
-		"MVI R1 " << symb_tracker.frame_offset - size << "\n" <<
+	this->stream_funcs <<
+		"MVI R2 2\n"
+		"SUB R1 R2\n" <<
 		"ADD RS R1\n" <<
 		"RET\n\n";
 		// The rest is the result (on stack)
-	
 }
 
 void _gc_Tracker::declaration_func(crl::Node *node){
