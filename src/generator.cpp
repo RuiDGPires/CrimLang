@@ -555,7 +555,7 @@ void _gc_Tracker::assign(crl::Node *node){
 			stream_funcs <<
 				"STORE m[RF][-" << p.first << "] " << name2 << "\n";
 	}else{
-		stream_funcs << "MVI " << name1 << t.str << "\n" <<
+		stream_funcs << "MVI " << name1 << " " << t.str << "\n" <<
 			"STORE m[" << name1 << "] " << name2 << "\n";
 	}
 	
