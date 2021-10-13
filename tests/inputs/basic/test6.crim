@@ -1,0 +1,12 @@
+//@[ret]
+
+i32 a = 3;
+
+i32 foo(){
+	return a;
+}
+
+i32 main(){
+	i32 a = 2;
+	return foo(); 
+}
