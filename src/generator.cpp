@@ -240,9 +240,9 @@ u32 _gc_Tracker::term(crl::Node *node, std::stringstream &stream){
 		// TODO : division
 		reg2 = this->factor(node->get_child(i+1), stream);
 		if (get_token(node->get_child(i)).type == crl::Token::Type::TIMES)
-			stream << "MUL " << name1 << reg_tracker.reg_name(reg2) << "\n";
+			stream << "MUL " << name1 << " " << reg_tracker.reg_name(reg2) << "\n";
 		else
-			stream << "DIV " << name1 << reg_tracker.reg_name(reg2) << "\n";
+			stream << "DIV " << name1 << " " << reg_tracker.reg_name(reg2) << "\n";
 		reg_tracker.free(reg2);
 	}
 	
