@@ -163,6 +163,7 @@ class _gc_Tracker{
 		void init(crl::Node *);
 		void block(crl::Node *);
 		void return_(crl::Node *);
+		void assign(crl::Node *);
 
 		u32 expression_reg(crl::Node *, std::stringstream &);
 		void expression(crl::Node *, std::stringstream &);
@@ -534,6 +535,34 @@ void _gc_Tracker::init(crl::Node *node){
 	this->stream_funcs << "\n";
 }
 
+void _gc_Tracker::assign(crl::Node *node){
+	crl::Token t = get_token(node->get_child(0));
+	
+	u32 reg1 = reg_tracker.alloc();
+	std::string name1 = reg_tracker.reg_name(reg1);
+	u32 reg2 = this->expression_reg(node->get_child(1), stream_funcs);
+	std::string name2 = reg_tracker.reg_name(reg2);
+	
+
+	if (symb_tracker.has_local(t.str)){
+		std::pair<u32, bool> p = symb_tracker.get_local(t.str);
+
+		if (p.second)
+			stream_funcs <<
+				"LOAD " << name1 << " m[RF][-" << p.first  << "]\n" <<
+				"STORE m[" << name1 << "] " << name2 << "\n";
+		else
+			stream_funcs <<
+				"STORE m[RF][-" << p.first << "] " << name2 << "\n";
+	}else{
+		stream_funcs << "MVI " << name1 << t.str << "\n" <<
+			"STORE m[" << name1 << "] " << name2 << "\n";
+	}
+	
+	reg_tracker.free(reg1);
+	reg_tracker.free(reg2);
+}
+
 void _gc_Tracker::program(crl::Node *node){
 	*(this->file) << 
 		";-----HEADER-----\n"<< 
@@ -591,6 +620,9 @@ void _gc_Tracker::parse_node(crl::Node * node, std::stringstream &stream){
 			break;
 		case crl::Node::Type::RETURN:
 			this->return_(node);
+			break;
+		case crl::Node::Type::ASSIGN:
+			this->assign(node);
 			break;
 		default:
 			ASSERT(false, "Not implemented");
