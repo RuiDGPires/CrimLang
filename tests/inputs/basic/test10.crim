@@ -1,0 +1,9 @@
+//@[ret]
+
+i32 foo(){
+	return 1;
+}
+
+i32 main(){
+	return foo();
+}
