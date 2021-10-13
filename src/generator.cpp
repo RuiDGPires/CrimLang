@@ -85,20 +85,36 @@ class SymbTracker{
 		std::map<std::string, std::list<std::pair<u32, bool>>> local_table; // bool is if is pointer or not
 		std::list<std::string> local_names;
 		u32 static_mem_pointer = 0;
+		u32 sp = 0;
 	public:
 			u32 frame_offset = 0;
+
+			void push(std::string name, std::stringstream &stream){
+				stream << "PSH " << name << "\n";	
+				sp++;
+			}
+			void pop(std::string name, std::stringstream &stream){
+				stream << "POP " << name << "\n";	
+				sp--;
+			}
+
 			u32 global_create(std::string name, u32 size){
 				this->global_table.insert(std::pair(name, static_mem_pointer));	 // Add to the global table
 				u32 res = this->static_mem_pointer;
 				this->static_mem_pointer += size;
 				return res;
 			}
-			void local_create(std::string name, u32 size, bool is_pointer){
+			void arg_create(std::string name, u32 size, bool is_pointer){
 				if (this->local_table.count(name) == 0) this->local_table.insert(std::pair(name, std::list<std::pair<u32, bool>>()));
 				frame_offset += size;
 				this->local_table.at(name).push_front(std::pair(frame_offset, is_pointer));
 				local_names.push_front(name);
+			}
 
+			void local_create(std::string name, u32 size){
+				if (this->local_table.count(name) == 0) this->local_table.insert(std::pair(name, std::list<std::pair<u32, bool>>()));
+				this->local_table.at(name).push_front(std::pair(frame_offset + ++sp, false));
+				local_names.push_front(name);
 			}
 
 			bool has_local(std::string name){
@@ -116,8 +132,12 @@ class SymbTracker{
 				return local_names.size();
 			}
 
-			void clean(u32 local_size){
+			void clean(u32 local_size, std::stringstream &stream){
 				size_t size = local_names.size();
+				stream <<
+					"MVI R1 " << size - local_size << "\n"
+					"ADD RS R1\n";
+
 				for (; size > local_size; size--){
 					std::string name = local_names.front();
 					local_names.pop_front();
@@ -135,6 +155,7 @@ class _gc_Tracker{
 		std::ofstream *file;
 		std::stringstream stream_defines, stream_global_vars, stream_funcs;
 
+		std::string current_func_name;
 		RegTracker reg_tracker = RegTracker(9);
 		LabelTracker label_tracker;
 		SymbTracker symb_tracker;
@@ -145,6 +166,7 @@ class _gc_Tracker{
 		void func_call(crl::Node *, std::stringstream &);
 		void init(crl::Node *);
 		void block(crl::Node *);
+		void return_(crl::Node *);
 
 		u32 expression_reg(crl::Node *, std::stringstream &);
 		void expression(crl::Node *, std::stringstream &);
@@ -175,12 +197,12 @@ u32 _gc_Tracker::factor(crl::Node *node, std::stringstream &stream){
 			case crl::Token::Type::IDENT:
 				if (this->symb_tracker.has_local(t.str)){
 					std::pair<u32, bool> p = symb_tracker.get_local(t.str);
-					stream << "MVI " << reg_name << " " << p.first << "\n";
+					stream <<
+						"LOAD " << reg_name << " m[RF][-" << p.first << "]\n";
 					if (p.second)
-							stream <<
-								"LOAD " << reg_name << " m[" << reg_name << "]\n";
-					stream << 
-						"LOAD " << reg_name << " m[" << reg_name << "]\n";
+						stream <<
+							"LOAD " << reg_name << " m[" << reg_name << "]\n";
+
 				}else{
 					stream <<
 						"MVI " << reg_name << " " << symb_tracker.get_global(t.str) << "\n" <<
@@ -316,11 +338,12 @@ void _gc_Tracker::declaration_cas(crl::Node *node){
 	this->stream_funcs << 
 		";Function " << name << "\n" <<
 		"MOV R7 RF\n" << // TMP STORE RF
-		"MOV RF RS\n" <<
-		"PSH R7\n" <<
-		"PSH R9\n" <<
-		"PSH R8\n" <<
-		"PSH RE\n"; // PUSH RF
+		"MOV RF RS\n";
+
+	symb_tracker.push("R7", stream_funcs);
+	symb_tracker.push("R9", stream_funcs);
+	symb_tracker.push("R8", stream_funcs);
+	symb_tracker.push("RE", stream_funcs);
 
 	// Arguents will be stored on the stack like this:
 	// foo(a, b, c) -> [a b c]
@@ -334,7 +357,7 @@ void _gc_Tracker::declaration_cas(crl::Node *node){
 		bool is_mut = arg->annotation == "mut";
 		u32 arg_size = is_mut? 1: size_of(type);
 		
-		symb_tracker.local_create(name, arg_size, is_mut);
+		symb_tracker.arg_create(name, arg_size, is_mut);
 	}
 
 	
@@ -352,17 +375,19 @@ void _gc_Tracker::declaration_cas(crl::Node *node){
 
 	this->stream_funcs << 
 		"; End of function\n" <<
-		name << "-end:\n" <<
-		"POP RE\n" <<
-		"POP R8\n" <<
-		"POP R9\n" <<
-		"POP RF\n" <<
+		name << "-end:\n" ;
+
+	symb_tracker.pop("RE", stream_funcs);
+	symb_tracker.pop("R8", stream_funcs);
+	symb_tracker.pop("R9", stream_funcs);
+	symb_tracker.pop("RF", stream_funcs);
+
+	this->stream_funcs << 
 		"MVI R1 " << symb_tracker.frame_offset - size << "\n" <<
 		"ADD RS R1\n" <<
 		"RET\n\n";
 		// The rest is the result (on stack)
 	
-	symb_tracker.clean(0);
 }
 
 void _gc_Tracker::declaration_func(crl::Node *node){
@@ -370,23 +395,24 @@ void _gc_Tracker::declaration_func(crl::Node *node){
 	ASSERT(node->get_child(1)->type == crl::Node::Type::LEAF, "Func declaration must have a name as second token");
 	std::string type = get_token(node->get_child(0)).str;
 	std::string name = get_token(node->get_child(1)).str;
+	this->current_func_name = name;
 	u32 size = size_of(type);
 
 	stream_funcs << name << ":\n"; 
 	
 	// RESULT SPACE ALLOCATION MUST BE DONE BY CALLER
 	
-	symb_tracker.frame_offset = size;
-	u32 frame_rollback = size;
+	symb_tracker.frame_offset = size - 1;
 
 	this->stream_funcs << 
 		";Function " << name << "\n" <<
 		"MOV R7 RF\n" << // TMP STORE RF
-		"MOV RF RS\n" <<
-		"PSH R7\n" <<
-		"PSH R9\n" <<
-		"PSH R8\n" <<
-		"PSH RE\n"; // PUSH RF
+		"MOV RF RS\n";
+
+	symb_tracker.push("R7", stream_funcs);
+	symb_tracker.push("R9", stream_funcs);
+	symb_tracker.push("R8", stream_funcs);
+	symb_tracker.push("RE", stream_funcs);
 
 	// Arguents will be stored on the stack like this:
 	// foo(a, b, c) -> [a b c]
@@ -400,7 +426,7 @@ void _gc_Tracker::declaration_func(crl::Node *node){
 		bool is_mut = arg->annotation == "mut";
 		u32 arg_size = is_mut? 1: size_of(type);
 		
-		symb_tracker.local_create(name, arg_size, is_mut);
+		symb_tracker.arg_create(name, arg_size, is_mut);
 	}
 
 	
@@ -411,21 +437,37 @@ void _gc_Tracker::declaration_func(crl::Node *node){
 	crl::Node *block = node->get_child(2+node->argc);
 	ASSERT(block->type == crl::Node::Type::BLOCK, "Funcs must have a block");
 	
+
+	size_t s = symb_tracker.check();
 	this->block(block);
+
+
 
 	this->stream_funcs << 
 		"; End of function\n" <<
-		name << "-end:\n" <<
-		"POP RE\n" <<
-		"POP R8\n" <<
-		"POP R9\n" <<
-		"POP RF\n" <<
-		"MVI R1 " << frame_rollback - size << "\n" <<
-		"ADD RS R1\n" <<
+		name << "-end:\n" ;
+
+	symb_tracker.clean(s, stream_funcs);
+	symb_tracker.pop("RE", stream_funcs);
+	symb_tracker.pop("R8", stream_funcs);
+	symb_tracker.pop("R9", stream_funcs);
+	symb_tracker.pop("RF", stream_funcs);
+
+	this->stream_funcs <<
 		"RET\n\n";
 		// The rest is the result (on stack)
 
-	symb_tracker.clean(0);
+}
+
+void _gc_Tracker::return_(crl::Node *node){
+	if (node->children.size() > 0)
+		this->expression(node->get_child(0), stream_funcs);
+
+
+	stream_funcs << 
+		"POP R1\n" <<
+		"STORE m[RF] R1\n" <<
+		"JMP " << current_func_name << "-end\n";
 }
 
 void _gc_Tracker::func_call(crl::Node *node, std::stringstream &stream){
@@ -460,13 +502,10 @@ void _gc_Tracker::func_call(crl::Node *node, std::stringstream &stream){
 }
 
 void _gc_Tracker::block(crl::Node *node){
-	size_t s = symb_tracker.check();
 
 	size_t size = node->children.size();
 	for (size_t i = 0; i < size; i++)
 		parse_node(node->get_child(i), stream_funcs);
-
-	symb_tracker.clean(s);
 }
 
 void _gc_Tracker::init(crl::Node *node){
@@ -477,7 +516,7 @@ void _gc_Tracker::init(crl::Node *node){
 	
 	u32 size = size_of(type);
 
-	symb_tracker.local_create(name, size, false);
+	symb_tracker.local_create(name, size);
 
 	if (node->children.size() == 3){
 		ASSERT(node->get_child(2)->type == crl::Node::Type::ASSIGN, "Third child must be assign");
@@ -505,7 +544,7 @@ void _gc_Tracker::program(crl::Node *node){
 		"\n;---GLOBAL-INITS---\n";
 
 	*(this->file) << stream_global_vars.str();
-	*(this->file) << "JMP main\n";
+	*(this->file) << "PSH R0\n" << "JMP main\n";
 	*(this->file) << "END\n";
 	*(this->file) << 
 		";--END-OF-HEADER-\n";
@@ -547,6 +586,7 @@ void _gc_Tracker::parse_node(crl::Node * node, std::stringstream &stream){
 			this->factor(node, stream);
 			break;
 		case crl::Node::Type::RETURN:
+			this->return_(node);
 			break;
 		default:
 			ASSERT(false, "Not implemented");
