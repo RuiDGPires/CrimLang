@@ -1,5 +1,4 @@
 #include "compiler.hpp"
-#include "map"
 
 #ifdef DEBUG
 #define ASSERT(v, s) if (!(v)) throw crl::AssertionError(-1, -1, s)
