@@ -104,6 +104,7 @@ void _sc_Tracker::func_declaration(crl::Node *node){
 		arg_item.type = Context::Item::Type::VAR;
 		arg_item.subtype = ((crl::Leaf *) arg->get_child(0))->token.str;
 		arg_item.name = ((crl::Leaf *) arg->get_child(1))->token.str;
+		arg_item._mutable = arg->annotation == "mut";
 		this->add(arg_item);
 	}
 	this->block(node->get_child(i), item.subtype);
