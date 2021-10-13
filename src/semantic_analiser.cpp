@@ -240,6 +240,8 @@ void _sc_Tracker::func_call(crl::Node *node, std::string annotation){
 	}
 }
 
+#define EXPR_OP(token) (token.type == crl::Token::Type::PLUS || token.type == crl::Token::Type::MINUS || token.type == crl::Token::Type::TIMES || token.type == crl::Token::Type::SLASH)
+
 void _sc_Tracker::expression(crl::Node *node, std::string annotation){
 	node->annotation = annotation;
 	size_t size = node->children.size();
@@ -260,7 +262,9 @@ void _sc_Tracker::expression(crl::Node *node, std::string annotation){
 				ASSERT(annotation == "f32" || annotation == "f64", "Must have float type");
 			}else if (((crl::Leaf *) node->get_child(i))->token.type == crl::Token::Type::STRING){
 				ASSERT(annotation == "string", "Must have string type");
-			}else ASSERT(false, "Unkown type");
+			
+			}else if (EXPR_OP(((crl::Leaf *) node->get_child(i))->token));
+			else ASSERT(false, "Unkown type");
 			break;
 		default:
 			this->expression(node->get_child(i), annotation);
