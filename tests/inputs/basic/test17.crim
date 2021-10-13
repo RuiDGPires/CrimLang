@@ -1,0 +1,18 @@
+//@[ret]
+
+i32 foo(i32 p){
+	i32 a = 1;
+	i32 b = 2;
+	i32 x = 3;
+	i32 l = 10;
+	i32 mut g = 100;
+	i32 mut c = 2;
+
+	return a + c + p;
+}
+
+i32 main(){
+	i32 a = 5;
+	return foo(a); 
+}
+
