@@ -447,7 +447,7 @@ void _gc_Tracker::declaration_func(crl::Node *node){
 		"; End of function\n" <<
 		name << "-end:\n" <<
 		"MOV RS RF\n" <<
-		"MVI R1 " << args_size + 2 << "\n" <<
+		"MVI R1 " << args_size + 1 + size << "\n" <<
 		"SUB RS R1\n";
 		
 	symb_tracker.pop("RE", stream_funcs);
@@ -463,12 +463,14 @@ void _gc_Tracker::declaration_func(crl::Node *node){
 }
 
 void _gc_Tracker::return_(crl::Node *node){
-	if (node->children.size() > 0)
+	if (node->children.size() > 0){
 		this->expression(node->get_child(0), stream_funcs);
+		stream_funcs << 
+			"POP R1\n" <<
+			"STORE m[RF] R1\n";
+	}
 
 	stream_funcs << 
-		"POP R1\n" <<
-		"STORE m[RF] R1\n" <<
 		"JMP " << current_func_name << "-end\n";
 }
 

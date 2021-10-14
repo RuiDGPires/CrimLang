@@ -145,8 +145,10 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 				ASSERT(node->children.size() == 1, "Non-void functions must return a value");
 				ASSERT(node->get_child(0)->type == crl::Node::Type::EXPRESSION, "Can only return expressions");
 				this->expression(node->get_child(0), annotation);
-			}else ASSERT(node->children.size() == 0, "Void functions must return no value");
-			break;
+			}else {
+				ASSERT(node->children.size() == 0, "Void functions must return no value");
+				node->annotation = "void";
+			}break;
 		case crl::Node::Type::IF:
 			{
 			bool aux = this->func_returns;
