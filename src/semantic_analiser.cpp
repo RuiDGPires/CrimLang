@@ -154,7 +154,7 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 			bool aux = this->func_returns;
 			this->func_returns = false;
 
-			this->expression(node->get_child(0), "i32");
+			this->expression(node->get_child(0), "u32");
 			ASSERT(node->get_child(1)->type == crl::Node::Type::THEN, "If statements MUST have a THEN child");
 
 			if (node->get_child(1)->get_child(0)->type == crl::Node::Type::BLOCK)
@@ -207,10 +207,12 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 }
 
 void _sc_Tracker::block(crl::Node *node, std::string annotation){
+	this->enter();
 	size_t size = node->children.size();
 	for (size_t i = 0; i < size; i++){
 		this->statement(node->get_child(i), annotation);
 	}
+	this->leave();
 }
 
 
@@ -258,7 +260,7 @@ void _sc_Tracker::expression(crl::Node *node, std::string annotation){
 		case crl::Node::Type::LEAF:
 			if (((crl::Leaf *) node->get_child(i))->token.type == crl::Token::Type::IDENT){
 				Context::Item item = this->context->seek(((crl::Leaf *) node->get_child(i))->token.str);
-				ASSERT(item.type == Context::Item::Type::VAR && item.subtype == annotation, "Identifier has not been defined");
+				ASSERT(item.type == Context::Item::Type::VAR && item.subtype == annotation, "Identifier has not been defined: " + item.name);
 			}else if (((crl::Leaf *) node->get_child(i))->token.type == crl::Token::Type::INT){
 				ASSERT(annotation == "i32" || annotation == "u32" || annotation == "char" || annotation == "i64" || annotation == "u64", "Must have integer or unsigned type");
 			}else if (((crl::Leaf *) node->get_child(i))->token.type == crl::Token::Type::DEC){
@@ -297,7 +299,7 @@ void _sc_Tracker::check(){
 	this->program(this->ast);
 	Context::Item item = this->context->seek("main");
 	ASSERT(item.type == Context::Item::Type::FUNC, "Main function is not defined");
-	ASSERT(item.subtype == "i32", "Main function is not defined");
+	ASSERT(item.subtype == "u32", "Main function is not defined");
 }
 
 
