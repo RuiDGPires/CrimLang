@@ -4,9 +4,8 @@ i32 main(){
 	u32 a = 2;
 
 	if (a){
-		u32 a = 9;
-		return a;
+		return 1;
 	}	else {
-		return 77;
+		return 2;
 	}
 }

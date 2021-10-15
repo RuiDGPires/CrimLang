@@ -1,15 +1,12 @@
 //@[ret]
 
 i32 main(){
-	u32 mut a = 0;	
-	u32 b = 10;
-	if (0){
-		a = 9;
+	u32 a = 2;
+
+	if (a){
+		u32 a = 9;
+		return a;
 	}	else {
-		a = 2;
+		return 77;
 	}
-	u32 c = a + b;
-	return c - 1;
 }
-
-
