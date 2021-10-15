@@ -161,6 +161,16 @@ void _ps_Tracker::factor(){
 	if (accept(crl::Token::Type::IDENT)){
 		if (this->current.type == crl::Token::Type::LPAREN){
 			this->func_call();
+		}else if (this->current.type == crl::Token::Type::INC){
+			this->enter(crl::Node::Type::INC);
+			this->add(this->previous());
+			this->next();
+			this->leave();
+		}else if (this->current.type == crl::Token::Type::DECR){
+			this->enter(crl::Node::Type::DEC);
+			this->add(this->previous());
+			this->next();
+			this->leave();
 		}else
 			this->add(this->previous());
 	} 
@@ -272,16 +282,55 @@ void _ps_Tracker::statement(){
 		}
 	}else if (accept(crl::Token::Type::IDENT)){
 		if (this->current.type == crl::Token::Type::LPAREN){
-				this->func_call();
-				this->expect(crl::Token::Type::SEMICLN);
-				return;
-		}else{
+			this->func_call();
+			this->expect(crl::Token::Type::SEMICLN);
+			return;
+		}else if (this->current.type == crl::Token::Type::INC){
+			this->enter(crl::Node::Type::INC);
+			this->add(this->previous());
+			this->next();
+			this->expect(crl::Token::Type::SEMICLN);
+		}else if (this->current.type == crl::Token::Type::DECR){
+			this->enter(crl::Node::Type::DEC);
+			this->add(this->previous());
+			this->next();
+			this->expect(crl::Token::Type::SEMICLN);
+		}else if (this->current.type == crl::Token::Type::BECOMES){
 			this->enter(crl::Node::Type::ASSIGN);
 			this->add(this->previous());
 			this->expect(crl::Token::Type::BECOMES);
 			this->expression();
 			this->expect(crl::Token::Type::SEMICLN);
-		}
+		}else if (this->current.type == crl::Token::Type::PLEQ){
+			this->enter(crl::Node::Type::ASSIGN);
+			this->annotate("plus");
+			this->add(this->previous());
+			this->expect(crl::Token::Type::PLEQ);
+			this->expression();
+			this->expect(crl::Token::Type::SEMICLN);
+		}else if (this->current.type == crl::Token::Type::MIEQ){
+			this->enter(crl::Node::Type::ASSIGN);
+			this->annotate("minus");
+			this->add(this->previous());
+			this->expect(crl::Token::Type::MIEQ);
+			this->expression();
+			this->expect(crl::Token::Type::SEMICLN);
+		}else if (this->current.type == crl::Token::Type::TIEQ){
+			this->enter(crl::Node::Type::ASSIGN);
+			this->annotate("times");
+			this->add(this->previous());
+			this->expect(crl::Token::Type::TIEQ);
+			this->expression();
+			this->expect(crl::Token::Type::SEMICLN);
+		}else if (this->current.type == crl::Token::Type::SLEQ){
+			this->enter(crl::Node::Type::ASSIGN);
+			this->annotate("slash");
+			this->add(this->previous());
+			this->expect(crl::Token::Type::SLEQ);
+			this->expression();
+			this->expect(crl::Token::Type::SEMICLN);
+		}else throw crl::UnexpectedToken(this->current);
+
 	}else if (accept TYPE_SPEC()){
 		this->enter(crl::Node::Type::INIT);
 		this->add(this->previous());

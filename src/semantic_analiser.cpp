@@ -33,6 +33,7 @@ class _sc_Tracker{
 		void cas(crl::Node *);
 		void func_declaration(crl::Node *);
 		void var_declaration(crl::Node *);
+		void unary(crl::Node *);
 
 		void statement(crl::Node *, std::string);
 		void block(crl::Node *, std::string);
@@ -201,6 +202,10 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 		case crl::Node::Type::INIT:
 			this->var_declaration(node);
 			break;
+		case crl::Node::Type::INC:
+		case crl::Node::Type::DEC:
+			this->unary(node);
+			break;
 		default:
 			throw crl::AssertionError(-1, -1, "Unkown node type");
 	}
@@ -257,6 +262,16 @@ void _sc_Tracker::expression(crl::Node *node, std::string annotation){
 			node->get_child(i)->annotation = annotation;
 			this->func_call(node->get_child(i), annotation);
 			break;
+			
+		case crl::Node::Type::DEC:
+		case crl::Node::Type::INC:
+			if (((crl::Leaf *) node->get_child(i)->get_child(0))->token.type == crl::Token::Type::IDENT){
+				Context::Item item = this->context->seek(((crl::Leaf *) node->get_child(i)->get_child(0))->token.str);
+				ASSERT(item.type == Context::Item::Type::VAR && item.subtype == annotation, "Identifier has not been defined: " + item.name);
+				ASSERT(item._mutable, "Variable must be mutable");
+			}else ASSERT(false, "Unkown type");
+			break;
+
 		case crl::Node::Type::LEAF:
 			if (((crl::Leaf *) node->get_child(i))->token.type == crl::Token::Type::IDENT){
 				Context::Item item = this->context->seek(((crl::Leaf *) node->get_child(i))->token.str);
@@ -276,6 +291,18 @@ void _sc_Tracker::expression(crl::Node *node, std::string annotation){
 			break;
 		}
 	}
+}
+
+void _sc_Tracker::unary(crl::Node *node){
+	crl::Node *ident = node->get_child(0);
+	ASSERT(ident->type == crl::Node::Type::LEAF, "Node must be leaf");
+	
+	crl::Token t = get_token(ident);
+
+	Context::Item item = this->context->seek(t.str);
+	ASSERT(item.type == Context::Item::Type::VAR, "Identifier has not been defined: " + item.name);
+	ASSERT(item._mutable, "Variable must be mutable");
+	ASSERT(item.subtype == "i32" || item.subtype == "u32" || item.subtype == "char" || item.subtype == "i64" || item.subtype == "u64" || item.subtype == "f32" || item.subtype == "f64", "Must have numeric type");
 }
 
 void _sc_Tracker::program(crl::Node *node){

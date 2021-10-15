@@ -65,8 +65,12 @@ bool Tracker::parse_symbol(std::string str){
 		this->current_token.type = crl::Token::Type::TIMES;
 	else if (str.compare("+") == 0)
 		this->current_token.type = crl::Token::Type::PLUS;
+	else if (str.compare("++") == 0)
+		this->current_token.type = crl::Token::Type::INC;
 	else if (str.compare("-") == 0)
 		this->current_token.type = crl::Token::Type::MINUS;
+	else if (str.compare("--") == 0)
+		this->current_token.type = crl::Token::Type::DECR;
 	else if (str.compare("/") == 0)
 		this->current_token.type = crl::Token::Type::SLASH;
 	else if (str.compare(".") == 0)

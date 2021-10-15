@@ -165,8 +165,11 @@ class _gc_Tracker{
 		void block(crl::Node *);
 		void return_(crl::Node *);
 		void assign(crl::Node *);
+		void assign_op(crl::Node *, std::string);
 		void if_(crl::Node *);
 		void while_(crl::Node *);
+		void unary(crl::Node *);
+		u32 unary_reg(crl::Node *);
 
 		u32 expression_reg(crl::Node *, std::stringstream &);
 		void expression(crl::Node *, std::stringstream &);
@@ -227,6 +230,8 @@ u32 _gc_Tracker::factor(crl::Node *node, std::stringstream &stream){
 		this->func_call(node->get_child(0), stream);
 		reg = this->reg_tracker.alloc();	
 		stream << "POP " << reg_tracker.reg_name(reg) << "\n"; // TODO Size larger than 1
+	}else if (node->get_child(0)->type == crl::Node::Type::INC || node->get_child(0)->type == crl::Node::Type::DEC){
+		reg = unary_reg(node->get_child(0)); 
 	}else ASSERT(false, "Not implemented");
 	
 	return reg;
@@ -542,6 +547,21 @@ void _gc_Tracker::init(crl::Node *node){
 }
 
 void _gc_Tracker::assign(crl::Node *node){
+	std::string op;
+	if (node->annotation == "plus")
+		op = "ADD";
+	else if	(node->annotation == "minus")
+		op = "SUB";
+	else if	(node->annotation == "times")
+		op = "MUL";
+	else if	(node->annotation == "slash")
+		op = "DIV";
+	
+	if (op != "") {
+		this->assign_op(node, op);
+		return;
+	}
+
 	crl::Token t = get_token(node->get_child(0));
 	
 	u32 reg1 = reg_tracker.alloc();
@@ -549,6 +569,7 @@ void _gc_Tracker::assign(crl::Node *node){
 	u32 reg2 = this->expression_reg(node->get_child(1), stream_funcs);
 	std::string name2 = reg_tracker.reg_name(reg2);
 	
+
 
 	if (symb_tracker.has_local(t.str)){
 		std::pair<u32, bool> p = symb_tracker.get_local(t.str);
@@ -569,6 +590,107 @@ void _gc_Tracker::assign(crl::Node *node){
 	reg_tracker.free(reg2);
 }
 
+void _gc_Tracker::assign_op(crl::Node *node, std::string op){
+	crl::Token t = get_token(node->get_child(0));
+	
+	u32 reg1 = reg_tracker.alloc();
+	std::string name1 = reg_tracker.reg_name(reg1);
+	u32 reg2 = this->expression_reg(node->get_child(1), stream_funcs);
+	std::string name2 = reg_tracker.reg_name(reg2);
+	
+
+	if (symb_tracker.has_local(t.str)){
+		std::pair<u32, bool> p = symb_tracker.get_local(t.str);
+
+		if (p.second){
+			u32 reg3 = reg_tracker.alloc();
+			std::string name3 = reg_tracker.reg_name(reg3);
+			stream_funcs <<
+				"LOAD " << name1 << " m[RF][-" << p.first  << "]\n" <<
+				"LOAD " << name3 << " m[" << name1  << "]\n" <<
+				op << " " << name3 << " " << name2 << "\n" <<
+				"STORE m[" << name1 << "] " << name3 << "\n";
+			reg_tracker.free(reg3);
+		}else
+			stream_funcs <<
+				"LOAD " << name1 << " m[RF][-" << p.first  << "]\n" <<
+				op << " " << name1 << " " << name2 << "\n" <<
+				"STORE m[RF][-" << p.first << "] " << name1 << "\n";
+	}else{
+		u32 reg3 = reg_tracker.alloc();
+		std::string name3 = reg_tracker.reg_name(reg3);
+
+		stream_funcs	<<
+		 	"MVI " << name1 << " " << t.str << "\n" <<
+			"LOAD " << name3 << " m[" << name1 << "]\n" <<
+			op << " " << name3 << " " << name2 <<  "\n" <<
+			"STORE m[" << name1 << "] " << name3 << "\n";
+
+		reg_tracker.free(reg3);
+	}
+	
+	reg_tracker.free(reg1);
+	reg_tracker.free(reg2);
+}
+
+void _gc_Tracker::unary(crl::Node *node){
+	reg_tracker.free(unary_reg(node));
+}
+
+u32 _gc_Tracker::unary_reg(crl::Node *node){
+	crl::Token t = get_token(node->get_child(0));
+	std::string op;
+	switch (node->type){
+		case crl::Node::Type::INC:
+			op = "INC";
+		break;
+		case crl::Node::Type::DEC:
+			op = "DEC";
+		break;
+		default:
+		break;
+	}
+	u32 reg = reg_tracker.alloc();
+	std::string name = reg_tracker.reg_name(reg);
+	
+	if (symb_tracker.has_local(t.str)){
+		std::pair<u32, bool> p = symb_tracker.get_local(t.str);
+
+		if (p.second){
+			u32 reg2 = reg_tracker.alloc();
+			std::string name2 = reg_tracker.reg_name(reg2);
+			stream_funcs <<
+				"LOAD " << name << " m[RF][-" << p.first  << "]\n" <<
+				"LOAD " << name2 << " m[" << name  << "]\n" <<
+				"PSH " << name2 << "\n" <<
+				op << " " << name2 << "\n" <<
+				"STORE m[" << name << "] " << name2 << "\n" <<
+				"POP " << name << "\n";
+
+			reg_tracker.free(reg2);
+		} else
+			stream_funcs <<
+				"LOAD " << name << " m[RF][-" << p.first  << "]\n" <<
+				"PSH " << name << "\n" <<
+				op << " " << name << "\n" <<
+				"STORE m[RF][-" << p.first << "] " << name << "\n" <<
+				"POP " << name << "\n";
+	}else{
+		u32 reg2 = reg_tracker.alloc();
+		std::string name2 = reg_tracker.reg_name(reg2);
+
+		stream_funcs << "MVI " << name << " " << t.str << "\n" <<
+			"LOAD " << name2 << " m[" << name << "]\n" <<
+			"PSH " << name2 << "\n" <<
+			op << " " << name2 << "\n" <<
+			"STORE m[" << name << "] " << name2 << "\n" <<
+			"POP " << name << "\n";
+
+		reg_tracker.free(reg2);
+	}
+
+	return reg;
+}
 
 void _gc_Tracker::if_(crl::Node *node){
 	u32 reg = this->expression_reg(node->get_child(0), stream_funcs);
@@ -692,6 +814,10 @@ void _gc_Tracker::parse_node(crl::Node * node, std::stringstream &stream){
 			break;
 		case crl::Node::Type::BLOCK:
 			this->block(node);
+			break;
+		case crl::Node::Type::INC:
+		case crl::Node::Type::DEC:
+			this->unary(node);
 			break;
 		default:
 			std::cout << node->type << std::endl;
