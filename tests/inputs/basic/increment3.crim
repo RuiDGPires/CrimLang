@@ -1,0 +1,12 @@
+//@[ret]
+
+void foo(u32 mut a){
+	a++;
+}
+
+u32 main(){
+	u32 mut o = 2;	
+	foo(&o);
+	return o;
+}
+
