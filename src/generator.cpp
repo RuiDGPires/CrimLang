@@ -165,6 +165,7 @@ class _gc_Tracker{
 		void block(crl::Node *);
 		void return_(crl::Node *);
 		void assign(crl::Node *);
+		void if_(crl::Node *);
 
 		u32 expression_reg(crl::Node *, std::stringstream &);
 		void expression(crl::Node *, std::stringstream &);
@@ -567,6 +568,38 @@ void _gc_Tracker::assign(crl::Node *node){
 	reg_tracker.free(reg2);
 }
 
+
+void _gc_Tracker::if_(crl::Node *node){
+	u32 reg = this->expression_reg(node->get_child(0), stream_funcs);
+
+	std::string	done_label = label_tracker.name(label_tracker.create());
+
+	std::string false_label;
+
+	bool has_else = node->children.size() == 3;
+	if (has_else)
+		false_label	= label_tracker.name(label_tracker.create());
+	else
+		false_label = done_label;
+	
+	stream_funcs <<
+		"CMP " << reg_tracker.reg_name(reg) << " R0\n" <<
+		"JMP.Z " << false_label << "\n";
+		
+	reg_tracker.free(reg);
+	this->parse_node(node->get_child(1)->get_child(0));
+
+	stream_funcs << "JMP " << done_label << "\n";
+
+	if (has_else){
+		stream_funcs <<
+			false_label << ":\n";
+		this->parse_node(node->get_child(2)->get_child(0));
+	}
+	stream_funcs <<
+		done_label << ":\n";
+}
+
 void _gc_Tracker::program(crl::Node *node){
 	*(this->file) << 
 		";-----HEADER-----\n"<< 
@@ -628,7 +661,14 @@ void _gc_Tracker::parse_node(crl::Node * node, std::stringstream &stream){
 		case crl::Node::Type::ASSIGN:
 			this->assign(node);
 			break;
+		case crl::Node::Type::IF:
+			this->if_(node);
+			break;
+		case crl::Node::Type::BLOCK:
+			this->block(node);
+			break;
 		default:
+			std::cout << node->type << std::endl;
 			ASSERT(false, "Not implemented");
 			break;
 	}
