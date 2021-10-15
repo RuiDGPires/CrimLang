@@ -1,0 +1,14 @@
+//@[ret]
+
+u32 main(){
+	u32 mut a = 4;
+	u32 mut b = 10;
+	if (a){
+		b = b -1;
+		b = b -1;	
+	}
+	return b;
+}
+
+
+
