@@ -129,7 +129,7 @@ void Tracker::check_keyword(){
 	else if (this->current_token.str.compare("for") == 0)
 		this->current_token.type = crl::Token::Type::FOR;
 	else if (this->current_token.str.compare("while") == 0)
-		this->current_token.type = crl::Token::Type::FOR;
+		this->current_token.type = crl::Token::Type::WHILE;
 	else if (this->current_token.str.compare("mut") == 0)
 		this->current_token.type = crl::Token::Type::MUT;
 	else if (this->current_token.str.compare("void") == 0)
