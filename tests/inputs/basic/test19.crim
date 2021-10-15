@@ -1,11 +1,11 @@
 //@[ret]
 
 void foo(){
-	i32 a = 90;
+	u32 a = 90;
 	return;
 }
 
-i32 main(){
-	i32 a = 3;
+u32 main(){
+	u32 a = 3;
 	return a;
 }

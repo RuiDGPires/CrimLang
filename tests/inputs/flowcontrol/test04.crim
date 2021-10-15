@@ -1,6 +1,6 @@
 //@[ret]
 
-i32 main(){
+u32 main(){
 	u32 a = 2;
 
 	if (a){

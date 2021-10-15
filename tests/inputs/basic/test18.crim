@@ -1,13 +1,13 @@
 //@[ret]
 
-i32 foo(i32 mut a){
+u32 foo(u32 mut a){
 	return a;
 }
 
-i32 main(){
-	i32 b = 2;
-	i32 mut a = 5;
-	i32 c = 9;
+u32 main(){
+	u32 b = 2;
+	u32 mut a = 5;
+	u32 c = 9;
 	return foo(&a); 
 }
 

@@ -1,7 +1,7 @@
 //@[ret]
 
-i32 main(){
-	i32 mut a = 2;
+u32 main(){
+	u32 mut a = 2;
 	a = a + 2;
 	return a;
 }

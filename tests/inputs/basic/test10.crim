@@ -1,9 +1,9 @@
 //@[ret]
 
-i32 foo(){
+u32 foo(){
 	return 1;
 }
 
-i32 main(){
+u32 main(){
 	return foo();
 }

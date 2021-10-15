@@ -1,8 +1,8 @@
 //@[ret]
 
-i32 a = 3;
+u32 a = 3;
 
-i32 main(){
-	i32 a = 2;
+u32 main(){
+	u32 a = 2;
 	return a; 
 }

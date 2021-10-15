@@ -1,8 +1,8 @@
 //@[ret]
 
-i32 mut a = 1;
+u32 mut a = 1;
 
-i32 main(){
+u32 main(){
 	a = 9;
 	return a;
 }

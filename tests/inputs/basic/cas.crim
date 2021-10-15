@@ -1,9 +1,9 @@
 //@[ret]
-i32 cas foo(){
+u32 cas foo(){
 	"MVI R1 90";
 	"STORE m[RF] R1";
 }
 
-i32 main(){
+u32 main(){
 	return foo();
 }

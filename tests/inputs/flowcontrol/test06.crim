@@ -1,6 +1,6 @@
 //@[ret]
 
-i32 main(){
+u32 main(){
 	u32 mut a = 0;	
 	u32 b = 10;
 	if (0){

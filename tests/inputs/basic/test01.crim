@@ -1,5 +1,5 @@
 //@[ret]
 
-i32 main(){
+u32 main(){
 	return 1;
 }

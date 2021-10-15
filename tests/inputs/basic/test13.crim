@@ -1,9 +1,9 @@
 //@[ret]
 
-i32 mut a = 1;
+u32 mut a = 1;
 
-i32 main(){
-	i32 b = 10;
+u32 main(){
+	u32 b = 10;
 	a = a + b;
 	return a;
 }
