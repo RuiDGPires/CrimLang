@@ -166,6 +166,7 @@ class _gc_Tracker{
 		void return_(crl::Node *);
 		void assign(crl::Node *);
 		void if_(crl::Node *);
+		void while_(crl::Node *);
 
 		u32 expression_reg(crl::Node *, std::stringstream &);
 		void expression(crl::Node *, std::stringstream &);
@@ -600,6 +601,28 @@ void _gc_Tracker::if_(crl::Node *node){
 		done_label << ":\n";
 }
 
+
+void _gc_Tracker::while_(crl::Node *node){
+	std::string	loop_label = label_tracker.name(label_tracker.create());
+	std::string end_label	= label_tracker.name(label_tracker.create());
+
+	stream_funcs <<	loop_label << ":\n";
+
+	u32 reg = this->expression_reg(node->get_child(0), stream_funcs);
+
+	stream_funcs <<
+		"CMP " << reg_tracker.reg_name(reg) << " R0\n" <<
+		"JMP.Z " << end_label << "\n";
+		
+	reg_tracker.free(reg);
+
+	this->parse_node(node->get_child(1));
+
+	stream_funcs << "JMP " << loop_label << "\n" <<
+		end_label << ":\n";
+}
+
+
 void _gc_Tracker::program(crl::Node *node){
 	*(this->file) << 
 		";-----HEADER-----\n"<< 
@@ -663,6 +686,9 @@ void _gc_Tracker::parse_node(crl::Node * node, std::stringstream &stream){
 			break;
 		case crl::Node::Type::IF:
 			this->if_(node);
+			break;
+		case crl::Node::Type::WHILE:
+			this->while_(node);
 			break;
 		case crl::Node::Type::BLOCK:
 			this->block(node);
