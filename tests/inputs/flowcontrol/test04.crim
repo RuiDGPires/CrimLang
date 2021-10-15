@@ -4,7 +4,7 @@ i32 main(){
 	u32 a = 2;
 
 	if (a){
-		u32 a = 9
+		u32 a = 9;
 		return a;
 	}	else {
 		return 77;
