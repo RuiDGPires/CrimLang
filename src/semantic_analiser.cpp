@@ -180,7 +180,7 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 			}
 			break;
 		case crl::Node::Type::WHILE:
-			this->expression(node->get_child(0), "i32");
+			this->expression(node->get_child(0), "u32");
 			if (node->get_child(1)->get_child(0)->type == crl::Node::Type::BLOCK)
 				this->block(node->get_child(1)->get_child(0), annotation);
 			else
