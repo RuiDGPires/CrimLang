@@ -85,65 +85,66 @@ class SymbTracker{
 		std::map<std::string, std::list<std::pair<u32, bool>>> local_table; // bool is if is pointer or not
 		std::list<std::string> local_names;
 		u32 static_mem_pointer = 0;
-		u32 sp = 0;
 	public:
-			u32 frame_offset = 0;
+		u32 sp = 0;
+		u32 frame_offset = 0;
 
-			void push(std::string name, std::stringstream &stream){
-				stream << "PSH " << name << "\n";	
-				sp++;
-			}
-			void pop(std::string name, std::stringstream &stream){
-				stream << "POP " << name << "\n";	
-				sp--;
-			}
+		void push(std::string name, std::stringstream &stream){
+			stream << "PSH " << name << "\n";	
+			sp++;
+		}
+		void pop(std::string name, std::stringstream &stream){
+			stream << "POP " << name << "\n";	
+			sp--;
+		}
 
-			u32 global_create(std::string name, u32 size){
-				this->global_table.insert(std::pair(name, static_mem_pointer));	 // Add to the global table
-				u32 res = this->static_mem_pointer;
-				this->static_mem_pointer += size;
-				return res;
-			}
-			void arg_create(std::string name, u32 size, bool is_pointer){
-				if (this->local_table.count(name) == 0) this->local_table.insert(std::pair(name, std::list<std::pair<u32, bool>>()));
-				frame_offset += size;
-				this->local_table.at(name).push_front(std::pair(frame_offset, is_pointer));
-				local_names.push_front(name);
-			}
+		u32 global_create(std::string name, u32 size){
+			this->global_table.insert(std::pair(name, static_mem_pointer));	 // Add to the global table
+			u32 res = this->static_mem_pointer;
+			this->static_mem_pointer += size;
+			return res;
+		}
+		void arg_create(std::string name, u32 size, bool is_pointer){
+			if (this->local_table.count(name) == 0) this->local_table.insert(std::pair(name, std::list<std::pair<u32, bool>>()));
+			frame_offset += size;
+			this->local_table.at(name).push_front(std::pair(frame_offset, is_pointer));
+			local_names.push_front(name);
+		}
 
-			void local_create(std::string name, u32 size){
-				if (this->local_table.count(name) == 0) this->local_table.insert(std::pair(name, std::list<std::pair<u32, bool>>()));
-				this->local_table.at(name).push_front(std::pair(frame_offset + ++sp, false));
-				local_names.push_front(name);
-			}
+		void local_create(std::string name, u32 size){
+			if (this->local_table.count(name) == 0) this->local_table.insert(std::pair(name, std::list<std::pair<u32, bool>>()));
+			this->local_table.at(name).push_front(std::pair(frame_offset + ++sp, false));
+			local_names.push_front(name);
+		}
 
-			bool has_local(std::string name){
-				return local_table.count(name) > 0;
-			}
-			
-			std::pair<u32, bool> get_local(std::string name){
-				return local_table.at(name).front();
-			}
-			u32 get_global(std::string name){
-				return global_table.at(name);
-			}
+		bool has_local(std::string name){
+			if (local_table.count(name) > 0) return local_table.at(name).size() > 0;
+			else return false;
+		}
+		
+		std::pair<u32, bool> get_local(std::string name){
+			return local_table.at(name).front();
+		}
+		u32 get_global(std::string name){
+			return global_table.at(name);
+		}
 
-			size_t check(){
-				return local_names.size();
+		size_t check(){
+			return local_names.size();
+		}
+
+		void clean(u32 local_size){
+			size_t size = local_names.size();
+			for (; size > local_size; size--){
+				std::string name = local_names.front();
+				local_names.pop_front();
+
+				local_table.at(name).pop_front();
 			}
+		}
 
-			void clean(u32 local_size, std::stringstream &stream){
-				size_t size = local_names.size();
-				for (; size > local_size; size--){
-					std::string name = local_names.front();
-					local_names.pop_front();
-
-					local_table.at(name).pop_front();
-				}
-			}
-
-			SymbTracker(){}
-			~SymbTracker(){}
+		SymbTracker(){}
+		~SymbTracker(){}
 };
 
 class _gc_Tracker{
@@ -333,6 +334,7 @@ void _gc_Tracker::declaration_cas(crl::Node *node){
 	// RESULT SPACE ALLOCATION MUST BE DONE BY CALLER
 	
 	symb_tracker.frame_offset = size - 1;
+	symb_tracker.sp = 0;
 
 	this->stream_funcs << 
 		";Function " << name << "\n" <<
@@ -403,6 +405,7 @@ void _gc_Tracker::declaration_func(crl::Node *node){
 	// RESULT SPACE ALLOCATION MUST BE DONE BY CALLER
 	
 	symb_tracker.frame_offset = size - 1;
+	symb_tracker.sp = 0;
 
 	this->stream_funcs << 
 		";Function " << name << "\n" <<
@@ -441,7 +444,7 @@ void _gc_Tracker::declaration_func(crl::Node *node){
 	
 
 	this->block(block);
-	symb_tracker.clean(s, stream_funcs);
+	symb_tracker.clean(s);
 
 	this->stream_funcs << 
 		"; End of function\n" <<
@@ -459,7 +462,6 @@ void _gc_Tracker::declaration_func(crl::Node *node){
 		"ADD RS R1\n" <<
 		"RET\n\n";
 		// The rest is the result (on stack)
-
 }
 
 void _gc_Tracker::return_(crl::Node *node){
@@ -512,7 +514,7 @@ void _gc_Tracker::block(crl::Node *node){
 	for (size_t i = 0; i < size; i++)
 		parse_node(node->get_child(i), stream_funcs);
 
-	symb_tracker.clean(s, stream_funcs);
+	symb_tracker.clean(s);
 }
 
 void _gc_Tracker::init(crl::Node *node){
