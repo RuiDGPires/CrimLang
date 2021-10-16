@@ -252,6 +252,10 @@ void _sc_Tracker::func_call(crl::Node *node, std::string annotation){
 
 #define EXPR_OP(token) (token.type == crl::Token::Type::PLUS || token.type == crl::Token::Type::MINUS || token.type == crl::Token::Type::TIMES || token.type == crl::Token::Type::SLASH)
 
+bool is_castable(std::string s1, std::string s2){
+	return true;
+}
+
 void _sc_Tracker::expression(crl::Node *node, std::string annotation){
 	node->annotation = annotation;
 	size_t size = node->children.size();
@@ -271,7 +275,14 @@ void _sc_Tracker::expression(crl::Node *node, std::string annotation){
 				ASSERT(item._mutable, "Variable must be mutable");
 			}else ASSERT(false, "Unkown type");
 			break;
-
+		case crl::Node::Type::CAST:
+			if (((crl::Leaf *) node->get_child(i)->get_child(0))->token.type == crl::Token::Type::IDENT){
+				Context::Item item = this->context->seek(((crl::Leaf *) node->get_child(i)->get_child(0))->token.str);
+				ASSERT(item.type == Context::Item::Type::VAR, "Identifier has not been defined: " + item.name);
+				ASSERT(get_token(node->get_child(i)->get_child(1)).str == annotation, "Cast type must correspond to expression type");
+				ASSERT(is_castable(item.subtype, annotation), item.subtype + " isn't castable to " + annotation);
+			}
+			break;
 		case crl::Node::Type::LEAF:
 			if (((crl::Leaf *) node->get_child(i))->token.type == crl::Token::Type::IDENT){
 				Context::Item item = this->context->seek(((crl::Leaf *) node->get_child(i))->token.str);

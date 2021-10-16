@@ -60,72 +60,72 @@ crl::Token &_ps_Tracker::previous(){
 bool _ps_Tracker::accept(crl::Token::Type t){
 	bool res = t == this->current.type;
 	if (res)
-		this->next();
-	return res;
-}
+			this->next();
+		return res;
+	}
 
 #include <stdarg.h>
-bool _ps_Tracker::accept(int n, ...){
-	va_list args;
-	va_start(args, n);
-	bool res = false;
-	while(n > 0){
-		int t = va_arg(args, int);
-		if ((int) this->current.type == t){
-			res = true;
-			break;
+	bool _ps_Tracker::accept(int n, ...){
+		va_list args;
+		va_start(args, n);
+		bool res = false;
+		while(n > 0){
+			int t = va_arg(args, int);
+			if ((int) this->current.type == t){
+				res = true;
+				break;
+			}
+			n--;
 		}
-		n--;
+		va_end(args);
+		if (res)
+			this->next();
+		return res;
 	}
-	va_end(args);
-	if (res)
+
+	void _ps_Tracker::expect(crl::Token::Type t){
+		if (t != this->current.type) throw crl::UnexpectedToken(this->current);
 		this->next();
-	return res;
-}
-
-void _ps_Tracker::expect(crl::Token::Type t){
-	if (t != this->current.type) throw crl::UnexpectedToken(this->current);
-	this->next();
-}
-
-void _ps_Tracker::expect(int n, ...){
-	va_list args;
-	va_start(args, n);
-	bool res = false;
-	while(n > 0){
-		int t = va_arg(args, int);
-		if ((int) this->current.type == t){
-			res = true;
-			break;
-		}
-		n--;
 	}
-	va_end(args);
-	if (!res) throw crl::UnexpectedToken(this->current); 
-	this->next();
-}
 
-void _ps_Tracker::enter(crl::Node::Type t){
-	crl::Node * node = new crl::Node(t, this->ast);
-	this->ast->add_child(node);
-	this->ast = node;
-}
+	void _ps_Tracker::expect(int n, ...){
+		va_list args;
+		va_start(args, n);
+		bool res = false;
+		while(n > 0){
+			int t = va_arg(args, int);
+			if ((int) this->current.type == t){
+				res = true;
+				break;
+			}
+			n--;
+		}
+		va_end(args);
+		if (!res) throw crl::UnexpectedToken(this->current); 
+		this->next();
+	}
 
-void _ps_Tracker::leave(){
-	this->ast = this->ast->parent;
-}
+	void _ps_Tracker::enter(crl::Node::Type t){
+		crl::Node * node = new crl::Node(t, this->ast);
+		this->ast->add_child(node);
+		this->ast = node;
+	}
 
-void _ps_Tracker::annotate(std::string s){
-	this->ast->annotation = s;
-}
+	void _ps_Tracker::leave(){
+		this->ast = this->ast->parent;
+	}
 
-void _ps_Tracker::add(crl::Token t){
-	this->ast->add_child(new crl::Leaf(t));
-}
+	void _ps_Tracker::annotate(std::string s){
+		this->ast->annotation = s;
+	}
 
-crl::Ast *_ps_Tracker::result(){
-	return this->aux;
-}
+	void _ps_Tracker::add(crl::Token t){
+		this->ast->add_child(new crl::Leaf(t));
+	}
+
+	crl::Ast *_ps_Tracker::result(){
+		return this->aux;
+	}
 
 #define TYPE_SPEC() (7, crl::Token::Type::VOID, crl::Token::Type::TCHAR, crl::Token::Type::TSTR, crl::Token::Type::U32, crl::Token::Type::I32, crl::Token::Type::F32, crl::Token::Type::F64)
 #define TYPE_NUMERIC() (3, crl::Token::Type::INT, crl::Token::Type::DEC, crl::Token::Type::CHAR)
@@ -135,46 +135,68 @@ crl::Ast *_ps_Tracker::result(){
 #define EXP_AND_ADD_VAR(types) expect types; this->add(this->previous())
 
 
-void _ps_Tracker::func_call(){
-	this->enter(crl::Node::Type::CALL);
-	this->add(this->previous());
-	this->expect(crl::Token::Type::LPAREN);
-	if (this->current.type != crl::Token::Type::RPAREN){
-		do{
-			this->enter(crl::Node::Type::ARG);
-			if (this->accept(crl::Token::Type::AND)){
-				this->annotate("ref");
-				this->expect(crl::Token::IDENT);
-				this->add(this->previous());
-			} else
-				this->expression();
-			this->leave();
-		}while(this->accept(crl::Token::Type::COMMA));
-		expect(crl::Token::Type::RPAREN);
-	}else{
-		this->next();
+	void _ps_Tracker::func_call(){
+		this->enter(crl::Node::Type::CALL);
+		this->add(this->previous());
+		this->expect(crl::Token::Type::LPAREN);
+		if (this->current.type != crl::Token::Type::RPAREN){
+			do{
+				this->enter(crl::Node::Type::ARG);
+				if (this->accept(crl::Token::Type::AND)){
+					this->annotate("ref");
+					this->expect(crl::Token::IDENT);
+					this->add(this->previous());
+				} else
+					this->expression();
+				this->leave();
+			}while(this->accept(crl::Token::Type::COMMA));
+			expect(crl::Token::Type::RPAREN);
+		}else{
+			this->next();
+		}
+		this->leave();
 	}
-	this->leave();
-}
-void _ps_Tracker::factor(){
-	this->enter(crl::Node::Type::FACTOR);
-	if (accept(crl::Token::Type::IDENT)){
-		if (this->current.type == crl::Token::Type::LPAREN){
-			this->func_call();
-		}else if (this->current.type == crl::Token::Type::INC){
-			this->enter(crl::Node::Type::INC);
-			this->add(this->previous());
-			this->next();
-			this->leave();
-		}else if (this->current.type == crl::Token::Type::DECR){
-			this->enter(crl::Node::Type::DEC);
-			this->add(this->previous());
-			this->next();
-			this->leave();
-		}else
-			this->add(this->previous());
-	} 
-	else if ACC_AND_ADD(crl::Token::Type::STRING);
+	void _ps_Tracker::factor(){
+		this->enter(crl::Node::Type::FACTOR);
+		if (accept(crl::Token::Type::IDENT)){
+			if (this->current.type == crl::Token::Type::LPAREN){
+				this->func_call();
+			}else if (this->current.type == crl::Token::Type::INC){
+				this->enter(crl::Node::Type::INC);
+				if (this->current.type == crl::Token::Type::AS){
+					this->enter(crl::Node::Type::CAST);
+					this->add(this->previous());
+					this->next();
+					EXP_AND_ADD_VAR(TYPE_SPEC());
+					this->leave();
+				}else{
+					this->add(this->previous());
+				}
+				this->next();
+				this->leave();
+			}else if (this->current.type == crl::Token::Type::DECR){
+				this->enter(crl::Node::Type::DEC);
+				if (this->current.type == crl::Token::Type::AS){
+					this->enter(crl::Node::Type::CAST);
+					this->add(this->previous());
+					this->next();
+					EXP_AND_ADD_VAR(TYPE_SPEC());
+					this->leave();
+				}else{
+					this->add(this->previous());
+				}
+				this->next();
+				this->leave();
+			}else if (this->current.type == crl::Token::Type::AS){
+					this->enter(crl::Node::Type::CAST);
+					this->add(this->previous());
+					this->next();
+					EXP_AND_ADD_VAR(TYPE_SPEC());
+					this->leave();
+			}else
+				this->add(this->previous());
+		
+	} else if ACC_AND_ADD(crl::Token::Type::STRING);
 	else if ACC_AND_ADD_VAR(TYPE_NUMERIC());
 	else if (accept(crl::Token::Type::LPAREN)){
 		this->expression();

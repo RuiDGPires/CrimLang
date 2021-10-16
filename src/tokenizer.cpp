@@ -152,6 +152,8 @@ void Tracker::check_keyword(){
 		this->current_token.type = crl::Token::Type::F64;
 	else if (this->current_token.str.compare("cas") == 0)
 		this->current_token.type = crl::Token::Type::CAS;
+	else if (this->current_token.str.compare("as") == 0)
+		this->current_token.type = crl::Token::Type::AS;
 	else if (this->current_token.str.compare("return") == 0)
 		this->current_token.type = crl::Token::Type::RETURN;
 }

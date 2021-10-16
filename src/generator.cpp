@@ -189,7 +189,7 @@ class _gc_Tracker{
 u32 _gc_Tracker::factor(crl::Node *node, std::stringstream &stream){
 	u32 reg;
 
-	ASSERT(node->type == crl::Node::Type::FACTOR, "Factor needs to be factor (Duh)");
+//	ASSERT(node->type == crl::Node::Type::FACTOR, "Factor needs to be factor " + std::to_string(node->type));
 
 	if (node->get_child(0)->type == crl::Node::Type::LEAF){
 		reg = this->reg_tracker.alloc();
@@ -226,6 +226,8 @@ u32 _gc_Tracker::factor(crl::Node *node, std::stringstream &stream){
 		}
 	}else if (node->get_child(0)->type == crl::Node::Type::EXPRESSION)
 		reg =  this->expression_reg(node->get_child(0), stream);
+	else if (node->get_child(0)->type == crl::Node::Type::CAST)
+		reg =  this->factor(node->get_child(0), stream); // TODO
 	else if (node->get_child(0)->type == crl::Node::Type::CALL){
 		this->func_call(node->get_child(0), stream);
 		reg = this->reg_tracker.alloc();	
