@@ -156,6 +156,10 @@ void Tracker::check_keyword(){
 		this->current_token.type = crl::Token::Type::AS;
 	else if (this->current_token.str.compare("return") == 0)
 		this->current_token.type = crl::Token::Type::RETURN;
+	else if (this->current_token.str.compare("break") == 0)
+		this->current_token.type = crl::Token::Type::BREAK;
+	else if (this->current_token.str.compare("continue") == 0)
+		this->current_token.type = crl::Token::Type::CONTINUE;
 }
 
 void Tracker::dump(){

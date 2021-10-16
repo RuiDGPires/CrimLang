@@ -20,6 +20,7 @@ class _sc_Tracker{
 		void add(Context::Item);
 		
 		bool func_returns = false; // Used to check if funcions return at on all possible paths
+		bool can_break = false;
 	public:
 		_sc_Tracker(){this->ast = NULL;}
 		_sc_Tracker(crl::Ast *ast){this->ast = ast;}
@@ -140,6 +141,9 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 			node->annotation = "void";
 			this->func_call(node, "void");
 			break;
+		case crl::Node::Type::BREAK:
+			ASSERT(this->can_break, "Invalid break/continue");
+			break;
 		case crl::Node::Type::RETURN:
 			this->func_returns = true;
 			if (annotation != "void"){
@@ -181,11 +185,14 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 			}
 			break;
 		case crl::Node::Type::WHILE:
+			this->can_break = true;
 			this->expression(node->get_child(0), "u32");
 			if (node->get_child(1)->get_child(0)->type == crl::Node::Type::BLOCK)
 				this->block(node->get_child(1)->get_child(0), annotation);
 			else
 				this->statement(node->get_child(1)->get_child(0), annotation);
+
+			this->can_break = false;
 			break;
 		case crl::Node::Type::FOR:
 

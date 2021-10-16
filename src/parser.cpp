@@ -302,6 +302,13 @@ void _ps_Tracker::statement(){
 			this->expression();
 			this->expect(crl::Token::Type::SEMICLN);
 		}
+	}else if (accept(crl::Token::Type::BREAK)){
+		this->enter(crl::Node::Type::BREAK);
+		this->expect(crl::Token::Type::SEMICLN);
+	}else if (accept(crl::Token::Type::CONTINUE)){
+		this->enter(crl::Node::Type::BREAK);
+		this->annotate("continue");
+		this->expect(crl::Token::Type::SEMICLN);
 	}else if (accept(crl::Token::Type::IDENT)){
 		if (this->current.type == crl::Token::Type::LPAREN){
 			this->func_call();

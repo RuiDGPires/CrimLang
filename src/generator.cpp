@@ -153,6 +153,7 @@ class _gc_Tracker{
 		std::stringstream stream_defines, stream_global_vars, stream_funcs;
 
 		std::string current_func_name;
+		std::pair<std::string, std::string> breakable_labels;
 		RegTracker reg_tracker = RegTracker(9);
 		LabelTracker label_tracker;
 		SymbTracker symb_tracker;
@@ -164,6 +165,7 @@ class _gc_Tracker{
 		void init(crl::Node *);
 		void block(crl::Node *);
 		void return_(crl::Node *);
+		void break_(crl::Node *);
 		void assign(crl::Node *);
 		void assign_op(crl::Node *, std::string);
 		void if_(crl::Node *);
@@ -485,6 +487,11 @@ void _gc_Tracker::return_(crl::Node *node){
 		"JMP " << current_func_name << "-end\n";
 }
 
+void _gc_Tracker::break_(crl::Node *node){
+	stream_funcs << 
+		"JMP " << (node->annotation == "continue" ?  this->breakable_labels.first : this->breakable_labels.second) << "\n";
+}
+
 void _gc_Tracker::func_call(crl::Node *node, std::stringstream &stream){
 	ASSERT(node->get_child(0)->type == crl::Node::Type::LEAF, "Func declaration must have a type as first token");
 	std::string name = get_token(node->get_child(0)).str;
@@ -729,6 +736,7 @@ void _gc_Tracker::if_(crl::Node *node){
 void _gc_Tracker::while_(crl::Node *node){
 	std::string	loop_label = label_tracker.name(label_tracker.create());
 	std::string end_label	= label_tracker.name(label_tracker.create());
+	this->breakable_labels = std::pair(loop_label, end_label);
 
 	stream_funcs <<	loop_label << ":\n";
 
@@ -804,6 +812,9 @@ void _gc_Tracker::parse_node(crl::Node * node, std::stringstream &stream){
 			break;
 		case crl::Node::Type::RETURN:
 			this->return_(node);
+			break;
+		case crl::Node::Type::BREAK:
+			this->break_(node);
 			break;
 		case crl::Node::Type::ASSIGN:
 			this->assign(node);
