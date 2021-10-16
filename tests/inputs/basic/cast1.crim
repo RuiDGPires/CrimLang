@@ -1,0 +1,6 @@
+//@[ret]
+
+u32 main(){
+	i32 a = 3;
+	return a as u32;
+}
