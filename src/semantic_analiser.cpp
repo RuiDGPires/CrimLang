@@ -1,5 +1,6 @@
 #include "compiler.hpp"
 #include "context.hpp"
+#include <stack>
 
 #ifdef DEBUG
 #define ASSERT(v, s) if (!(v)) throw crl::AssertionError(-1, -1, s)
@@ -40,6 +41,7 @@ class _sc_Tracker{
 		void block(crl::Node *, std::string);
 		void func_call(crl::Node *, std::string);
 		void expression(crl::Node *, std::string);
+		std::string expression_get_type(crl::Node *);
 
 };
 
@@ -185,7 +187,7 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 			}
 			break;
 		case crl::Node::Type::WHILE:
-			this->can_break = true;
+			this->can_break = true; // TODO: fix
 			this->expression(node->get_child(0), "u32");
 			if (node->get_child(1)->get_child(0)->type == crl::Node::Type::BLOCK)
 				this->block(node->get_child(1)->get_child(0), annotation);
@@ -257,13 +259,78 @@ void _sc_Tracker::func_call(crl::Node *node, std::string annotation){
 	}
 }
 
-#define EXPR_OP(token) (token.type == crl::Token::Type::PLUS || token.type == crl::Token::Type::MINUS || token.type == crl::Token::Type::TIMES || token.type == crl::Token::Type::SLASH)
+#define EXPR_OP(token) (token.type == crl::Token::Type::PLUS || token.type == crl::Token::Type::MINUS || token.type == crl::Token::Type::TIMES || token.type == crl::Token::Type::SLASH || token.type == crl::Token::Type::EQL || token.type == crl::Token::Type::NEQ || token.type == crl::Token::Type::LEQ || token.type == crl::Token::Type::GEQ || token.type == crl::Token::Type::GTR || token.type == crl::Token::Type::LSS || token.type == crl::Token::Type::LAND || token.type == crl::Token::Type::LOR)
 
 bool is_castable(std::string s1, std::string s2){
 	return true;
 }
+/*
+ *procedure DFS_iterative(G, v) is
+    let S be a stack
+    S.push(v)
+    while S is not empty do
+        v = S.pop()
+        if v is not labeled as discovered then
+            label v as discovered
+            for all edges from v to w in G.adjacentEdges(v) do 
+                S.push(w)
+ *
+ *
+ */
+std::string _sc_Tracker::expression_get_type(crl::Node *node){
+	size_t size = node->children.size();
+
+	std::stack<crl::Node *> stack;
+
+	for (size_t i = 0; i < size; i++){
+		stack.push(node->get_child(i));
+	}
+
+	while(!stack.empty()){
+		crl::Node *current = stack.top();
+		stack.pop();
+		switch (current->type){
+		case crl::Node::Type::CALL:
+			{
+			std::string func_name = get_token(node->get_child(0)).str;
+			Context::Item item = this->context->seek(func_name);
+			return item.subtype;
+			}
+			break;
+			
+		case crl::Node::Type::DEC:
+		case crl::Node::Type::INC:
+			if (((crl::Leaf *) current->get_child(0))->token.type == crl::Token::Type::IDENT){
+				Context::Item item = this->context->seek(((crl::Leaf *) current->get_child(0))->token.str);
+				return item.subtype;
+			}else ASSERT(false, "Unkown type");
+			break;
+		case crl::Node::Type::CAST:
+			return get_token(current->get_child(1)).str;
+			break;
+		case crl::Node::Type::LEAF:
+			if (((crl::Leaf *) current)->token.type == crl::Token::Type::IDENT){
+				Context::Item item = this->context->seek(((crl::Leaf *) current)->token.str);
+				return item.subtype;
+			}else if (((crl::Leaf *) current)->token.type == crl::Token::Type::INT);
+			else if (((crl::Leaf *) current)->token.type == crl::Token::Type::DEC)
+				return "f32";
+			else if (((crl::Leaf *) current)->token.type == crl::Token::Type::STRING)
+				return "string";
+			break;
+		default:
+			for (size_t i = 0; i < current->children.size(); i++)
+				stack.push(current->get_child(i));
+			break;
+		}
+	}
+	return "i32"; // Default type
+}
 
 void _sc_Tracker::expression(crl::Node *node, std::string annotation){
+	if (annotation == "")
+		annotation = expression_get_type(node);
+
 	node->annotation = annotation;
 	size_t size = node->children.size();
 
@@ -283,11 +350,11 @@ void _sc_Tracker::expression(crl::Node *node, std::string annotation){
 			}else ASSERT(false, "Unkown type");
 			break;
 		case crl::Node::Type::CAST:
-			if (((crl::Leaf *) node->get_child(i)->get_child(0))->token.type == crl::Token::Type::IDENT){
-				Context::Item item = this->context->seek(((crl::Leaf *) node->get_child(i)->get_child(0))->token.str);
-				ASSERT(item.type == Context::Item::Type::VAR, "Identifier has not been defined: " + item.name);
-				ASSERT(get_token(node->get_child(i)->get_child(1)).str == annotation, "Cast type must correspond to expression type");
-				ASSERT(is_castable(item.subtype, annotation), item.subtype + " isn't castable to " + annotation);
+			{
+			ASSERT(get_token(node->get_child(i)->get_child(1)).str == annotation, "Cast type must correspond to expression type");
+			std::string expr_type = expression_get_type(node->get_child(i)->get_child(0));
+			ASSERT(is_castable(expr_type, annotation), expr_type + " isn't castable to " + annotation);
+			this->expression(node->get_child(i)->get_child(0), expr_type);
 			}
 			break;
 		case crl::Node::Type::LEAF:

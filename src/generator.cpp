@@ -173,8 +173,10 @@ class _gc_Tracker{
 		void unary(crl::Node *);
 		u32 unary_reg(crl::Node *);
 
-		u32 expression_reg(crl::Node *, std::stringstream &);
 		void expression(crl::Node *, std::stringstream &);
+		u32 expression_reg(crl::Node *, std::stringstream &);
+		u32 basic_expression(crl::Node *, std::stringstream &);
+		u32 comparison(crl::Node *, std::stringstream &);
 		u32 term(crl::Node *, std::stringstream &);
 		u32 factor(crl::Node *, std::stringstream &);
 
@@ -262,7 +264,7 @@ u32 _gc_Tracker::term(crl::Node *node, std::stringstream &stream){
 	return reg1;
 }
 
-u32 _gc_Tracker::expression_reg(crl::Node *node, std::stringstream &stream){
+u32 _gc_Tracker::basic_expression(crl::Node *node, std::stringstream &stream){
 	size_t size = node->children.size();
 	size_t i = 0;
 	bool negate = false;
@@ -295,6 +297,75 @@ u32 _gc_Tracker::expression_reg(crl::Node *node, std::stringstream &stream){
 			stream << "ADD " << reg_name << " " << reg_tracker.reg_name(reg2) << "\n";
 		else
 			stream << "SUB " << reg_name << " " << reg_tracker.reg_name(reg2) << "\n";
+		reg_tracker.free(reg2);
+	}
+	return reg1; 
+}
+
+u32 _gc_Tracker::comparison(crl::Node *node, std::stringstream &stream){
+	size_t size = node->children.size();
+	size_t i = 0;
+
+	u32 reg1 = this->basic_expression(node->get_child(i++), stream);
+	std::string name1 = reg_tracker.reg_name(reg1);
+
+	for (; i < size; i += 2){
+		u32 reg2 = this->basic_expression(node->get_child(i+1), stream);
+		bool is_signed = node->get_child(0)->annotation == "i32";
+		if (get_token(node->get_child(i)).type == crl::Token::Type::EQL)
+			stream << "XOR " << name1 << " " << reg_tracker.reg_name(reg2) << "\n" <<
+				"LNOT " << name1 << "\n";
+		else if (get_token(node->get_child(i)).type == crl::Token::Type::NEQ)
+			stream << "XOR " << name1 << " " << reg_tracker.reg_name(reg2) << "\n";
+		else if (get_token(node->get_child(i)).type == crl::Token::Type::GTR)
+			stream << "GT" << std::string(is_signed ? "I": "U") << " " << name1 << " " << reg_tracker.reg_name(reg2) << "\n"; 
+		else if (get_token(node->get_child(i)).type == crl::Token::Type::LEQ)
+			stream << "GT" << std::string(is_signed ? "I": "U") << " " << name1 << " " << reg_tracker.reg_name(reg2) << "\n" <<
+				"LNOT " << name1 << "\n";
+		else if (get_token(node->get_child(i)).type == crl::Token::Type::GEQ){
+			u32 reg3 = reg_tracker.alloc();
+			std::string name2 = reg_tracker.reg_name(reg2);
+			std::string name3 = reg_tracker.reg_name(reg3);
+
+			stream <<
+				"MOV " << name3 << " " << name1 << "\n" <<
+				"GT" << std::string(is_signed ? "I": "U") << " " << name1 << " " << name2 << "\n" <<
+				"XOR " << name2 << " " << name3 << "\n" <<
+				"NOT " << name2 << "\n" <<
+				"LOR " << name1 << " " << name2 << "\n";
+			reg_tracker.free(reg3);
+		} else if (get_token(node->get_child(i)).type == crl::Token::Type::LSS){
+			u32 reg3 = reg_tracker.alloc();
+			std::string name2 = reg_tracker.reg_name(reg2);
+			std::string name3 = reg_tracker.reg_name(reg3);
+
+			stream <<
+				"MOV " << name3 << " " << name1 << "\n" <<
+				"GT" << std::string(is_signed ? "I": "U") << " " << name1 << " " << name2 << "\n" <<
+				"NOT " << name1 << "\n" <<
+				"XOR " << name2 << " " << name3 << "\n" <<
+				"LAND " << name1 << " " << name2 << "\n";
+			reg_tracker.free(reg3);
+		}
+
+		reg_tracker.free(reg2);
+	}
+	return reg1; 
+}
+
+u32 _gc_Tracker::expression_reg(crl::Node *node, std::stringstream &stream){
+	size_t size = node->children.size();
+	size_t i = 0;
+
+	u32 reg1 = this->comparison(node->get_child(i++), stream);
+	std::string reg_name = reg_tracker.reg_name(reg1);
+
+	for (; i < size; i += 2){
+		u32 reg2 = this->comparison(node->get_child(i+1), stream);
+		if (get_token(node->get_child(i)).type == crl::Token::Type::LAND)
+			stream << "LAND " << reg_name << " " << reg_tracker.reg_name(reg2) << "\n";
+		else
+			stream << "LOR " << reg_name << " " << reg_tracker.reg_name(reg2) << "\n";
 		reg_tracker.free(reg2);
 	}
 	return reg1; 

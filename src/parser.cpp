@@ -26,6 +26,7 @@ class _ps_Tracker{
 		void expect(int, ...);
 
 		void enter(crl::Node::Type);
+		void wrap(crl::Node::Type);
 		void add(crl::Token);
 		void leave();
 		void annotate(std::string);
@@ -34,6 +35,8 @@ class _ps_Tracker{
 
 		void factor();
 		void term();
+		void basic_expression();
+		void comparison();
 		void expression();
 		void program();
 		void declaration();
@@ -110,6 +113,13 @@ bool _ps_Tracker::accept(crl::Token::Type t){
 		this->ast->add_child(node);
 		this->ast = node;
 	}
+	void _ps_Tracker::wrap(crl::Node::Type t){
+		crl::Node * node = new crl::Node(t, this->ast);
+		node->children = this->ast->children;
+		this->ast->children.clear();
+		this->ast->add_child(node);
+		this->ast = node;
+	}
 
 	void _ps_Tracker::leave(){
 		this->ast = this->ast->parent;
@@ -129,6 +139,8 @@ bool _ps_Tracker::accept(crl::Token::Type t){
 
 #define TYPE_SPEC() (7, crl::Token::Type::VOID, crl::Token::Type::TCHAR, crl::Token::Type::TSTR, crl::Token::Type::U32, crl::Token::Type::I32, crl::Token::Type::F32, crl::Token::Type::F64)
 #define TYPE_NUMERIC() (3, crl::Token::Type::INT, crl::Token::Type::DEC, crl::Token::Type::CHAR)
+#define TYPE_EQ() (6, crl::Token::Type::EQL, crl::Token::Type::NEQ, crl::Token::Type::LEQ, crl::Token::Type::GEQ, crl::Token::Type::GTR, crl::Token::Type::LSS)
+#define TYPE_LOGIC() (2, crl::Token::Type::LAND, crl::Token::Type::LOR)
 #define ACC_AND_ADD(type) (accept(type)) this->add(this->previous())
 #define EXP_AND_ADD(type) (expect(type)); this->add(this->previous())
 #define ACC_AND_ADD_VAR(types) (accept types) this->add(this->previous())
@@ -163,49 +175,32 @@ bool _ps_Tracker::accept(crl::Token::Type t){
 				this->func_call();
 			}else if (this->current.type == crl::Token::Type::INC){
 				this->enter(crl::Node::Type::INC);
-				if (this->current.type == crl::Token::Type::AS){
-					this->enter(crl::Node::Type::CAST);
-					this->add(this->previous());
-					this->next();
-					EXP_AND_ADD_VAR(TYPE_SPEC());
-					this->leave();
-				}else{
-					this->add(this->previous());
-				}
+				this->add(this->previous());
 				this->next();
 				this->leave();
 			}else if (this->current.type == crl::Token::Type::DECR){
 				this->enter(crl::Node::Type::DEC);
-				if (this->current.type == crl::Token::Type::AS){
-					this->enter(crl::Node::Type::CAST);
-					this->add(this->previous());
-					this->next();
-					EXP_AND_ADD_VAR(TYPE_SPEC());
-					this->leave();
-				}else{
-					this->add(this->previous());
-				}
+				this->add(this->previous());
 				this->next();
 				this->leave();
-			}else if (this->current.type == crl::Token::Type::AS){
-					this->enter(crl::Node::Type::CAST);
-					this->add(this->previous());
-					this->next();
-					EXP_AND_ADD_VAR(TYPE_SPEC());
-					this->leave();
 			}else
 				this->add(this->previous());
 		
-	} else if ACC_AND_ADD(crl::Token::Type::STRING);
-	else if ACC_AND_ADD_VAR(TYPE_NUMERIC());
-	else if (accept(crl::Token::Type::LPAREN)){
-		this->expression();
-		this->expect(crl::Token::Type::RPAREN);
-	}else{
-		throw crl::UnexpectedToken(this->current);
+		} else if ACC_AND_ADD(crl::Token::Type::STRING);
+		else if ACC_AND_ADD_VAR(TYPE_NUMERIC());
+		else if (accept(crl::Token::Type::LPAREN)){
+			this->expression();
+			this->expect(crl::Token::Type::RPAREN);
+		}else{
+			throw crl::UnexpectedToken(this->current);
+		}
+		if (accept(crl::Token::Type::AS)){
+			this->wrap(crl::Node::Type::CAST);
+			EXP_AND_ADD_VAR(TYPE_SPEC());
+			this->leave();
+		}
+		this->leave();
 	}
-	this->leave();
-}
 
 void _ps_Tracker::term(){
 	this->enter(crl::Node::Type::TERM);
@@ -217,13 +212,33 @@ void _ps_Tracker::term(){
 	this->leave();
 }
 
-void _ps_Tracker::expression(){
+void _ps_Tracker::basic_expression(){
 	this->enter(crl::Node::Type::EXPRESSION);
 	if ACC_AND_ADD_VAR((2, crl::Token::Type::PLUS, crl::Token::Type::MINUS));
 	this->term();
 	while(accept(2, crl::Token::Type::PLUS, crl::Token::Type::MINUS)){
 		this->add(this->previous());
 		this->term();
+	}
+	this->leave();
+}
+
+void _ps_Tracker::comparison(){
+	this->enter(crl::Node::Type::EXPRESSION);
+	this->basic_expression();
+	while(accept TYPE_EQ()){
+		this->add(this->previous());
+		this->basic_expression();
+	}
+	this->leave();
+}
+
+void _ps_Tracker::expression(){
+	this->enter(crl::Node::Type::EXPRESSION);
+	this->comparison();
+	while(accept TYPE_LOGIC()){
+		this->add(this->previous());
+		this->comparison();
 	}
 	this->leave();
 }
