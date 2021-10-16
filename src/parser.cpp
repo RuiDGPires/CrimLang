@@ -38,6 +38,7 @@ class _ps_Tracker{
 		void basic_expression();
 		void comparison();
 		void expression();
+		void casted_expression();
 		void program();
 		void declaration();
 		void statement();
@@ -224,7 +225,7 @@ void _ps_Tracker::basic_expression(){
 }
 
 void _ps_Tracker::comparison(){
-	this->enter(crl::Node::Type::EXPRESSION);
+	this->enter(crl::Node::Type::COMPARISON);
 	this->basic_expression();
 	while(accept TYPE_EQ()){
 		this->add(this->previous());
@@ -242,6 +243,27 @@ void _ps_Tracker::expression(){
 	}
 	this->leave();
 }
+void _ps_Tracker::casted_expression(){
+	this->enter(crl::Node::Type::EXPRESSION);
+	this->enter(crl::Node::Type::COMPARISON);
+	this->enter(crl::Node::Type::EXPRESSION);
+	this->enter(crl::Node::Type::TERM);
+	this->enter(crl::Node::Type::FACTOR);
+	this->enter(crl::Node::Type::CAST);
+
+	this->expression();
+
+	crl::Token t;
+	t.type = crl::Token::Type::U32; t.str = "u32";
+	this->add(t);
+	this->leave();
+	this->leave();
+	this->leave();
+	this->leave();
+	this->leave();
+	this->leave();
+}
+
 
 void _ps_Tracker::program(){
 	this->enter(crl::Node::Type::PROGRAM);
@@ -266,7 +288,7 @@ void _ps_Tracker::statement(){
 		this->enter(crl::Node::Type::IF);
 
 		this->expect(crl::Token::Type::LPAREN);
-		this->expression();	
+		this->casted_expression();	
 		this->expect(crl::Token::Type::RPAREN);
 
 		this->enter(crl::Node::Type::THEN);
@@ -287,8 +309,9 @@ void _ps_Tracker::statement(){
 		}
 	}else if (accept(crl::Token::Type::WHILE)){
 		this->enter(crl::Node::Type::WHILE);
+
 		this->expect(crl::Token::Type::LPAREN);
-		this->expression();	
+		this->casted_expression();	
 		this->expect(crl::Token::Type::RPAREN);
 
 		if (accept(crl::Token::Type::LBRACK))

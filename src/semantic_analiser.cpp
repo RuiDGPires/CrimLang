@@ -264,19 +264,7 @@ void _sc_Tracker::func_call(crl::Node *node, std::string annotation){
 bool is_castable(std::string s1, std::string s2){
 	return true;
 }
-/*
- *procedure DFS_iterative(G, v) is
-    let S be a stack
-    S.push(v)
-    while S is not empty do
-        v = S.pop()
-        if v is not labeled as discovered then
-            label v as discovered
-            for all edges from v to w in G.adjacentEdges(v) do 
-                S.push(w)
- *
- *
- */
+
 std::string _sc_Tracker::expression_get_type(crl::Node *node){
 	size_t size = node->children.size();
 
@@ -318,6 +306,12 @@ std::string _sc_Tracker::expression_get_type(crl::Node *node){
 			else if (((crl::Leaf *) current)->token.type == crl::Token::Type::STRING)
 				return "string";
 			break;
+
+		case crl::Node::Type::COMPARISON:
+			if (current->children.size() > 1){
+				return "u32";
+				break;
+			}
 		default:
 			for (size_t i = 0; i < current->children.size(); i++)
 				stack.push(current->get_child(i));
@@ -371,6 +365,11 @@ void _sc_Tracker::expression(crl::Node *node, std::string annotation){
 			}else if (EXPR_OP(((crl::Leaf *) node->get_child(i))->token));
 			else ASSERT(false, "Unkown type");
 			break;
+		case crl::Node::Type::COMPARISON:
+			if (node->get_child(i)->children.size() > 1){
+				this->expression(node->get_child(i), "");
+				break;
+			}
 		default:
 			this->expression(node->get_child(i), annotation);
 			break;

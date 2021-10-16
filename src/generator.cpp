@@ -282,7 +282,7 @@ u32 _gc_Tracker::basic_expression(crl::Node *node, std::stringstream &stream){
 	if (negate){
 		u32 aux = reg_tracker.alloc();
 		stream <<
-			"MVI " << reg_tracker.reg_name(aux) << "0\n" <<
+			"MVI " << reg_tracker.reg_name(aux) << " 0\n" <<
 			"SUB " << reg_tracker.reg_name(aux) << " " << reg_name << "\n";
 		reg_tracker.free(reg1);
 		std::string name1 = reg_tracker.reg_name(aux);
@@ -331,7 +331,7 @@ u32 _gc_Tracker::comparison(crl::Node *node, std::stringstream &stream){
 				"MOV " << name3 << " " << name1 << "\n" <<
 				"GT" << std::string(is_signed ? "I": "U") << " " << name1 << " " << name2 << "\n" <<
 				"XOR " << name2 << " " << name3 << "\n" <<
-				"NOT " << name2 << "\n" <<
+				"LNOT " << name2 << "\n" <<
 				"LOR " << name1 << " " << name2 << "\n";
 			reg_tracker.free(reg3);
 		} else if (get_token(node->get_child(i)).type == crl::Token::Type::LSS){
@@ -342,7 +342,7 @@ u32 _gc_Tracker::comparison(crl::Node *node, std::stringstream &stream){
 			stream <<
 				"MOV " << name3 << " " << name1 << "\n" <<
 				"GT" << std::string(is_signed ? "I": "U") << " " << name1 << " " << name2 << "\n" <<
-				"NOT " << name1 << "\n" <<
+				"LNOT " << name1 << "\n" <<
 				"XOR " << name2 << " " << name3 << "\n" <<
 				"LAND " << name1 << " " << name2 << "\n";
 			reg_tracker.free(reg3);
