@@ -2,6 +2,7 @@
 
 void foo(u32 mut a){
 	a++;
+	return;
 }
 
 u32 main(){

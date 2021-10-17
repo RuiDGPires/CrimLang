@@ -113,37 +113,38 @@ for directory in DIRS:
         result = 0
         
 
-
+        passed = False
         a = subprocess.run([EXE, file, TMP], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
 
-        if not flg_needs_input:
-            result = subprocess.run([VM, "-ar", TMP], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-        else:
-            with open(f"{dir_path}/inputs/{directory}/{filename_no_ext}.in", "r") as test_input:
-                result = subprocess.run([VM, "-ar", TMP], stdin = test_input, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-
-        ret_code = result.returncode 
-
-        success = False
-        if not flg_test_return:
-            success = ret_code == 0 
-        else:
-            success = True
-
-        passed = False 
-
-        if success:
-            with open(out_file, "r") as f:
-                file_text = f.read();
-            if flg_test_return:
-                passed = file_text == str(ret_code) + "\n"
+        if (a.returncode == 0):
+            if not flg_needs_input:
+                result = subprocess.run([VM, "-ar", TMP], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
             else:
-                passed = file_text == result.stdout.decode('ascii')
-        else:
-            if flg_test_error:
+                with open(f"{dir_path}/inputs/{directory}/{filename_no_ext}.in", "r") as test_input:
+                    result = subprocess.run([VM, "-ar", TMP], stdin = test_input, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+
+            ret_code = result.returncode 
+
+            success = False
+            if not flg_test_return:
+                success = ret_code == 0 
+            else:
+                success = True
+
+            passed = False 
+
+            if success:
                 with open(out_file, "r") as f:
                     file_text = f.read();
-                passed = file_text == result.stderr.decode('ascii')
+                if flg_test_return:
+                    passed = file_text == str(ret_code) + "\n"
+                else:
+                    passed = file_text == result.stdout.decode('ascii')
+            else:
+                if flg_test_error:
+                    with open(out_file, "r") as f:
+                        file_text = f.read();
+                    passed = file_text == result.stderr.decode('ascii')
             
 
         if not passed:
