@@ -1,0 +1,14 @@
+//@[ret]
+
+u32 main(){
+	u32 mut a = 0;
+	
+	for (i32 mut i = 1; i <= 3; i++)	
+		a += i;
+
+
+	return a;
+}
+
+
+

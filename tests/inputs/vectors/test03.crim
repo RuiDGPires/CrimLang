@@ -1,0 +1,13 @@
+//@[ret]
+
+u32 main(){
+	u32[] a = [1, 3]; 
+
+	u32 i = 0;
+	while(i < a.size){
+		a[i] = i;	
+		i++;
+	}
+	return a[3];
+}
+
