@@ -37,7 +37,7 @@ static u32 size_of(std::string type){
 		return 1;
 	else if (type == "i64" || type == "u64" || type == "f64")
 		return 2;	
-	else ASSERT(false, "Unkown type");
+	else ASSERT(false, "Unkown type: " + type);
 }
 
 class RegTracker{
@@ -231,7 +231,10 @@ u32 _gc_Tracker::factor(crl::Node *node, std::stringstream &stream){
 	}else if (node->get_child(0)->type == crl::Node::Type::EXPRESSION)
 		reg =  this->expression_reg(node->get_child(0), stream);
 	else if (node->get_child(0)->type == crl::Node::Type::CAST)
-		reg =  this->factor(node->get_child(0), stream); // TODO
+		if (node->get_child(0)->get_child(0)->type == crl::Node::Type::EXPRESSION)
+			reg = this->expression_reg(node->get_child(0)->get_child(0), stream);
+		else
+			reg = this->factor(node->get_child(0), stream);
 	else if (node->get_child(0)->type == crl::Node::Type::CALL){
 		this->func_call(node->get_child(0), stream);
 		reg = this->reg_tracker.alloc();	

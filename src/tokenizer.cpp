@@ -24,7 +24,7 @@ static bool is_whitespace(char c){
 
 class Tracker{
 	private:
-		enum PState{NONE, IDENT, NUM, STRING, CHAR, SYMBOL, COMMENT, PREPROC};
+		enum PState{NONE, IDENT, NUM, STRING, CHAR, SYMBOL, COMMENT, PREPROC, GLOBAL_FOLDER};
 		crl::Token current_token;
 		u32 line = 1, column = 0;
 		PState state = NONE;
@@ -207,6 +207,11 @@ void Tracker::take(char c){
 					this->dump();
 				}else
 					throw crl::SyntaxError(line, column, "Unexpected #");
+			
+			}else if (c == '<' && this->preproc_line == 1){
+				state = PState::GLOBAL_FOLDER;
+				set_type(crl::Token::Type::GLOBAL_FOLDER);
+				this->set_pos();
 			}else if (is_letter(c)){
 				if (!this->preproc_line) this->preproc_line = -1;
 				state = PState::IDENT;
@@ -238,7 +243,12 @@ void Tracker::take(char c){
 				break;
 			else throw crl::SyntaxError(line, column, "Unkown character: " + std::string(1, c));
 			break;
-	
+		case PState::GLOBAL_FOLDER:
+			if (c == '>')
+				this->dump();
+			else
+				this->push_char(c);	
+		break;	
 		case PState::IDENT:
 			if (is_letter(c) || is_number(c) || c == '_')
 				this->push_char(c);

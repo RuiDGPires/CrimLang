@@ -37,9 +37,9 @@ class _sc_Tracker{
 		void var_declaration(crl::Node *);
 		void unary(crl::Node *);
 
+		void func_call(crl::Node *, std::string);
 		void statement(crl::Node *, std::string);
 		void block(crl::Node *, std::string);
-		void func_call(crl::Node *, std::string);
 		void expression(crl::Node *, std::string);
 		std::string expression_get_type(crl::Node *);
 
@@ -152,7 +152,7 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 				ASSERT(node->children.size() == 1, "Non-void functions must return a value");
 				ASSERT(node->get_child(0)->type == crl::Node::Type::EXPRESSION, "Can only return expressions");
 				this->expression(node->get_child(0), annotation);
-			}else {
+			}else{
 				ASSERT(node->children.size() == 0, "Void functions must return no value");
 				node->annotation = "void";
 			}break;
@@ -348,7 +348,14 @@ void _sc_Tracker::expression(crl::Node *node, std::string annotation){
 			ASSERT(get_token(node->get_child(i)->get_child(1)).str == annotation, "Cast type must correspond to expression type");
 			std::string expr_type = expression_get_type(node->get_child(i)->get_child(0));
 			ASSERT(is_castable(expr_type, annotation), expr_type + " isn't castable to " + annotation);
-			this->expression(node->get_child(i)->get_child(0), expr_type);
+			if (node->get_child(i)->get_child(0)->type == crl::Node::Type::CALL){
+				node->get_child(i)->get_child(0)->annotation = expr_type;
+				this->func_call(node->get_child(i)->get_child(0), expr_type);
+				
+				break;
+			}
+			else
+				this->expression(node->get_child(i)->get_child(0), expr_type);
 			}
 			break;
 		case crl::Node::Type::LEAF:
