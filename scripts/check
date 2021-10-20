@@ -1,6 +1,6 @@
 #!/bin/sh
 
-./crimlang_dbg $1 a.cas
+./crimlang_dbg $1 a.cas ${@:2}
 ../CrimVm/crimvm -ar a.cas
 echo $?
 rm a.cas
