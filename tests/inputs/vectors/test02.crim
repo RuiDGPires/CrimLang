@@ -1,7 +1,7 @@
 //@[ret]
 
 u32 main(){
-	u32[5] a; 
+	u32[5] mut a; 
 
 	u32 i = 0;
 	while(i < a.size){

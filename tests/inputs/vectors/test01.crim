@@ -1,7 +1,7 @@
 //@[ret]
 
 u32 main(){
-	u32[10] a; 
+	u32[10] mut a; 
 
 	a[1] = 2;
 	return a[1];
