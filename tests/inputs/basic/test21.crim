@@ -1,0 +1,7 @@
+//@[ret]
+
+u32 main(){
+	u32 mut a;
+	a = 8;
+	return a;
+}
