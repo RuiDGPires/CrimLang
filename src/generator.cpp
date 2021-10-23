@@ -213,7 +213,7 @@ u32 _gc_Tracker::factor(crl::Node *node, std::stringstream &stream){
 				}else{
 					stream <<
 						"MVI " << reg_name << " " << symb_tracker.get_global(t.str) << "\n" <<
-						"LOAD "<< reg_name << " m[" << reg_name << "]\n";
+						"LOAD " << reg_name << " m[" << reg_name << "]\n";
 				}
 				break;
 			case crl::Token::Type::INT:
@@ -228,6 +228,27 @@ u32 _gc_Tracker::factor(crl::Node *node, std::stringstream &stream){
 				ASSERT(false, "Factor not implemented");
 				break;
 		}
+		
+	}else if (node->get_child(0)->type == crl::Node::Type::VECTOR){
+		reg = this->reg_tracker.alloc();
+		std::string reg_name = reg_tracker.reg_name(reg);
+
+		crl::Token t = get_token(node->get_child(0)->get_child(0));
+		u32 offset = atoi(get_token(node->get_child(0)->get_child(1)).str.c_str());
+		if (this->symb_tracker.has_local(t.str)){
+			std::pair<u32, bool> p = symb_tracker.get_local(t.str);
+			if (p.second)
+				stream <<
+					"LOAD " << reg_name << " m[RF][-" << p.first << "]\n" << 
+					"LOAD " << reg_name << " m[" << reg_name << "][-" << offset << "]\n";
+			else
+				stream <<
+					"LOAD " << reg_name << " m[RF][-" << p.first + offset << "]\n";
+		}else
+			stream <<
+				"MVI " << reg_name << " " << symb_tracker.get_global(t.str) << "\n" <<
+				"LOAD " << reg_name << " m[" << reg_name << "][-" << offset << "]\n";
+
 	}else if (node->get_child(0)->type == crl::Node::Type::EXPRESSION)
 		reg =  this->expression_reg(node->get_child(0), stream);
 	else if (node->get_child(0)->type == crl::Node::Type::CAST)
@@ -608,13 +629,37 @@ void _gc_Tracker::block(crl::Node *node){
 }
 
 void _gc_Tracker::init(crl::Node *node){
-	ASSERT(node->get_child(0)->type == crl::Node::Type::LEAF, "Var declaration must start with type");
+	u32 size = 0;
 	ASSERT(node->get_child(1)->type == crl::Node::Type::LEAF, "Var declaration must have a name as second token");
-	std::string type = get_token(node->get_child(0)).str;
 	std::string name = get_token(node->get_child(1)).str;
-	
-	u32 size = size_of(type);
 
+	if (node->get_child(0)->type == crl::Node::Type::VECTOR){
+		crl::Node *vec = node->get_child(0);
+		ASSERT(vec->get_child(1)->type == crl::Node::Type::LEAF, "Vector needs to have it's size as second child");
+
+		// Vectors will be laid on the stack like so: [1st element, 2nd, 3rd, ..., last element, size]
+		// When roll-backing the SF, one just needs to peek at the top of the stack
+		// When assigning values, the var location will be the first element	
+		
+		u32 element_size = size_of(get_token(vec->get_child(0)).str);
+		size = atoi(get_token(vec->get_child(1)).str.c_str())*element_size;
+
+		symb_tracker.local_create(name, size + 1);
+
+		this->stream_funcs <<
+			"; Advance the stack (variable is unitialized)\n" << 
+			"MVI R1 " << size << "\n" <<
+			"SUB RS R1\n" <<
+			"PSH R1\n";
+
+		return;
+	}
+
+	// ELSE....
+	ASSERT(node->get_child(0)->type == crl::Node::Type::LEAF, "Var declaration must start with type");
+	std::string type = get_token(node->get_child(0)).str;
+	size = size_of(type);
+	
 	symb_tracker.local_create(name, size);
 
 	if (node->children.size() == 3){
@@ -623,8 +668,9 @@ void _gc_Tracker::init(crl::Node *node){
 		// The result of the expression will be stored on the stack, that is our variable
 	}else
 		this->stream_funcs << 
-			"; Advance the stack (variable is unitialized)" << 
-			"SUB RS " << size << "\n";// PUSH ZEROS
+			"; Advance the stack (variable is unitialized)\n" << 
+			"MVI R1 " << size << "\n" <<
+			"SUB RS R1\n";
 	
 	this->stream_funcs << "\n";
 }
@@ -644,16 +690,46 @@ void _gc_Tracker::assign(crl::Node *node){
 		this->assign_op(node, op);
 		return;
 	}
-
-	crl::Token t = get_token(node->get_child(0));
-	
 	u32 reg1 = reg_tracker.alloc();
 	std::string name1 = reg_tracker.reg_name(reg1);
+
 	u32 reg2 = this->expression_reg(node->get_child(1), stream_funcs);
 	std::string name2 = reg_tracker.reg_name(reg2);
+
+	crl::Token t;	
+	if (node->get_child(0)->type == crl::Node::Type::VECTOR){
+		t = get_token(node->get_child(0)->get_child(0));
+		u32 reg_aux = reg_tracker.alloc();
+		std::string name_aux = reg_tracker.reg_name(reg_aux);
+
+		u32 offset = atoi(get_token(node->get_child(0)->get_child(1)).str.c_str());
+
+		if (symb_tracker.has_local(t.str)){
+			std::pair<u32, bool> p = symb_tracker.get_local(t.str);
+
+			if (p.second)
+				stream_funcs <<
+				"LOAD " << name1 << " m[RF][-" << p.first  << "]\n" <<
+				"MVI " << name_aux << " " << offset << "\n" <<
+				"ADD " << name1 << " " << name_aux << "\n" <<
+				"STORE m[" << name1 << "] " << name2 << "\n";
+			else
+				stream_funcs <<
+					"STORE m[RF][-" << p.first + offset << "] " << name2 << "\n";
+		}else
+			stream_funcs <<
+				"MVI " << name1 << " " << t.str << "\n" <<
+				"MVI " << name_aux << " " << offset << "\n" <<
+				"ADD " << name1 << " " << name_aux << "\n" <<
+				"STORE m[" << name1 << "] " << name2 << "\n";
+		
+		reg_tracker.free(reg1);
+		reg_tracker.free(reg2);
+		reg_tracker.free(reg_aux);
+		return;
+	}
 	
-
-
+	t = get_token(node->get_child(0));
 	if (symb_tracker.has_local(t.str)){
 		std::pair<u32, bool> p = symb_tracker.get_local(t.str);
 
@@ -674,13 +750,20 @@ void _gc_Tracker::assign(crl::Node *node){
 }
 
 void _gc_Tracker::assign_op(crl::Node *node, std::string op){
-	crl::Token t = get_token(node->get_child(0));
+	crl::Token t;
+
 	
 	u32 reg1 = reg_tracker.alloc();
 	std::string name1 = reg_tracker.reg_name(reg1);
 	u32 reg2 = this->expression_reg(node->get_child(1), stream_funcs);
 	std::string name2 = reg_tracker.reg_name(reg2);
-	
+	u32 offset = 0;
+
+	if (node->get_child(0)->type == crl::Node::Type::VECTOR){
+		t = get_token(node->get_child(0)->get_child(0));
+		offset = atoi(get_token(node->get_child(0)->get_child(1)).str.c_str());
+	}else
+		t = get_token(node->get_child(0));
 
 	if (symb_tracker.has_local(t.str)){
 		std::pair<u32, bool> p = symb_tracker.get_local(t.str);
@@ -689,26 +772,25 @@ void _gc_Tracker::assign_op(crl::Node *node, std::string op){
 			u32 reg3 = reg_tracker.alloc();
 			std::string name3 = reg_tracker.reg_name(reg3);
 			stream_funcs <<
-				"LOAD " << name1 << " m[RF][-" << p.first  << "]\n" <<
-				"LOAD " << name3 << " m[" << name1  << "]\n" <<
+				"LOAD " << name1 << " m[RF][-" << p.first << "]\n" <<
+				"LOAD " << name3 << " m[" << name1  << "][-" << offset << "]\n" <<
 				op << " " << name3 << " " << name2 << "\n" <<
-				"STORE m[" << name1 << "] " << name3 << "\n";
+				"STORE m[" << name1 << "][-" << offset << "] " << name3 << "\n";
 			reg_tracker.free(reg3);
 		}else
 			stream_funcs <<
-				"LOAD " << name1 << " m[RF][-" << p.first  << "]\n" <<
+				"LOAD " << name1 << " m[RF][-" << p.first + offset << "]\n" <<
 				op << " " << name1 << " " << name2 << "\n" <<
-				"STORE m[RF][-" << p.first << "] " << name1 << "\n";
+				"STORE m[RF][-" << p.first + offset<< "] " << name1 << "\n";
 	}else{
 		u32 reg3 = reg_tracker.alloc();
 		std::string name3 = reg_tracker.reg_name(reg3);
 
 		stream_funcs	<<
 		 	"MVI " << name1 << " " << t.str << "\n" <<
-			"LOAD " << name3 << " m[" << name1 << "]\n" <<
+			"LOAD " << name3 << " m[" << name1 << "][-" << offset << "]\n" <<
 			op << " " << name3 << " " << name2 <<  "\n" <<
-			"STORE m[" << name1 << "] " << name3 << "\n";
-
+			"STORE m[" << name1 << "][-" << offset << "] " << name3 << "\n";
 		reg_tracker.free(reg3);
 	}
 	

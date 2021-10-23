@@ -120,7 +120,12 @@ void _sc_Tracker::func_declaration(crl::Node *node){
 void _sc_Tracker::var_declaration(crl::Node *node){
 	Context::Item item;
 	item.type = Context::Item::Type::VAR;
-	item.subtype = ((crl::Leaf *) node->get_child(0))->token.str;
+	if (node->get_child(0)->type == crl::Node::Type::VECTOR){
+		item.subtype = ((crl::Leaf *) node->get_child(0)->get_child(0))->token.str;
+		item._is_vector = true;
+		item.vec_size = atoi(((crl::Leaf *) node->get_child(0)->get_child(1))->token.str.c_str());
+	}else
+		item.subtype = ((crl::Leaf *) node->get_child(0))->token.str;
 	item.name = ((crl::Leaf *) node->get_child(1))->token.str;
 
 	if (node->annotation == "mut")
@@ -201,7 +206,12 @@ void _sc_Tracker::statement(crl::Node *node, std::string annotation){
 			break;
 		case crl::Node::Type::ASSIGN:
 			{
-				Context::Item item = this->context->seek(get_token(node->get_child(0)).str);
+				Context::Item item;
+				if (node->get_child(0)->type == crl::Node::Type::VECTOR){
+					item = this->context->seek(get_token(node->get_child(0)->get_child(0)).str);
+					ASSERT(item._is_vector, "Var needs to be vector to be assigned with an offset");
+				}else 
+					item = this->context->seek(get_token(node->get_child(0)).str);
 				ASSERT(item.type == Context::Item::Type::VAR, "Can only assign values to variables");
 				ASSERT(item._mutable, "Can only assign mutable variables");
 				if (node->get_child(1)->type == crl::Node::EXPRESSION)
@@ -296,6 +306,12 @@ std::string _sc_Tracker::expression_get_type(crl::Node *node){
 		case crl::Node::Type::CAST:
 			return get_token(current->get_child(1)).str;
 			break;
+		case crl::Node::Type::VECTOR:
+			{
+			Context::Item item = this->context->seek(((crl::Leaf *) current->get_child(0))->token.str);
+			return item.subtype;
+			}
+			break;
 		case crl::Node::Type::LEAF:
 			if (((crl::Leaf *) current)->token.type == crl::Token::Type::IDENT){
 				Context::Item item = this->context->seek(((crl::Leaf *) current)->token.str);
@@ -356,6 +372,12 @@ void _sc_Tracker::expression(crl::Node *node, std::string annotation){
 			}
 			else
 				this->expression(node->get_child(i)->get_child(0), expr_type);
+			}
+			break;
+		case crl::Node::Type::VECTOR:
+			{
+				Context::Item item = this->context->seek(((crl::Leaf *) node->get_child(i)->get_child(0))->token.str);
+				ASSERT(item.type == Context::Item::Type::VAR && item._is_vector && item.subtype == annotation, "Identifier has not been defined: " + item.name);
 			}
 			break;
 		case crl::Node::Type::LEAF:

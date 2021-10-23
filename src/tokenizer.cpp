@@ -11,7 +11,7 @@ static bool is_letter(char c){
 }
 
 static bool is_symbol(char c){
-	return c == '(' || c == ')' || c == '{' || c == '}' || c == ',' || c == ';' \
+	return c == '(' || c == ')' || c=='[' || c==']' || c == '{' || c == '}' || c == ',' || c == ';' \
 						|| c == '=' || c == '+' || c == '-' || c == '*' || c == '/' || c == '$' \
 						|| c == '#' || c == '<' || c == '>' || c =='&' || c == '%' || c == '|' || c == '!';
 }
@@ -83,6 +83,10 @@ bool Tracker::parse_symbol(std::string str){
 		this->current_token.type = crl::Token::Type::LBRACK;
 	else if (str.compare("}") == 0)
 		this->current_token.type = crl::Token::Type::RBRACK;
+	else if (str.compare("[") == 0)
+		this->current_token.type = crl::Token::Type::LSBR;
+	else if (str.compare("]") == 0)
+		this->current_token.type = crl::Token::Type::RSBR;
 	else if (str.compare("$") == 0)
 		this->current_token.type = crl::Token::Type::DOLLAR;
 	else if (str.compare("&") == 0)

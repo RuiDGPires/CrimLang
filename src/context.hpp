@@ -14,6 +14,10 @@ class Context{
 				std::string name;
 				std::string subtype;
 
+				bool _is_vector = false;
+				int vec_size = 0;
+				
+
 				bool _mutable = false; // Only used if is variable
 
 				std::vector<std::pair<std::string, bool>> args; // Only used if is function/cas, each argument is a pair of <type, is_mutable>
@@ -24,7 +28,7 @@ class Context{
 				~Item(){};
 
 				bool operator ==(Item &other)const{
-					return this->type == other.type && this->subtype == other.subtype && this->args == other.args && this->_mutable == other._mutable;
+					return this->type == other.type && this->subtype == other.subtype && this->args == other.args && this->_mutable == other._mutable && this->_is_vector == other._is_vector && this->vec_size == other.vec_size;
 				}
 		};
 		Context();
